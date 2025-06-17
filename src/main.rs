@@ -1,3 +1,13 @@
+use clap::Parser;
+use clap_derive::*;
+
+#[derive(Parser, Debug)]
+struct Arguments {
+    mode: String,
+    input_file: std::path::PathBuf,
+}
+
 fn main() {
-    println!("Hello, world!");
+    let args = Arguments::parse();
+    println!("{args:?}")
 }
