@@ -28,7 +28,7 @@ shift left, set carry, clear carry, and potentially more instructions in the fut
 ### Supported Memory Operations
 The ISA supports pushing a register to the stack, popping a register from the stack, loading a value from RAM into the
 accumulator, storing a value from the accumulator to RAM, copying the accumulator to a register, copying a register to
-the accumulator, and potentially more instructions if I see fit.
+the accumulator, loading an immediate to the accumulator, and potentially more instructions if I see fit.
 ### Supported Flow Control Operations
 The ISA supports branching on carry set, branching on carry not set, branching on negative, branching on positive,
 branching on equal, branching on not equal, branching on zero, branching on not zero, jumping, jumping to a subroutine,
@@ -76,17 +76,18 @@ Opcodes ``0x21``-``0x41`` have been reserved for memory.
 ``0x22 0xzz`` - pulls the top value from the stack into the register specified by the immediate
 #### LDA
 ``0x23 0xzz 0xzz`` - absolute  
-``0x24 0xzz 0xzz 0xzz`` - indexed
-``0x25 0xzz`` - zero page
-``0x26 0xzz 0xzz`` - zero page indexed
+``0x24 0xzz 0xzz 0xzz`` - indexed  
+``0x25 0xzz`` - zero page  
+``0x26 0xzz 0xzz`` - zero page indexed  
+``0x27 0xzz`` - load immediate
 #### STA
-``0x27 0xzz 0xzz`` - absolute  
-``0x28 0xzz 0xzz 0xzz`` - indexed
-``0x29 0xzz`` - zero page
-``0x2A 0xzz 0xzz`` - zero page indexed
+``0x28 0xzz 0xzz`` - absolute  
+``0x29 0xzz 0xzz 0xzz`` - indexed  
+``0x2A 0xzz`` - zero page  
+``0x2B 0xzz 0xzz`` - zero page indexed
 #### CPA/CPR
-``0x2B 0xzz`` - Copy accumulator to register
-``0x2C 0xzz`` - Copy register to accumulator
+``0x2C 0xzz`` - Copy accumulator to register  
+``0x2D 0xzz`` - Copy register to accumulator
 ### Flow Control
 Opcodes ``0x42``-``0x62`` have been reserved for flow control.
 #### BCS
@@ -102,11 +103,11 @@ Opcodes ``0x42``-``0x62`` have been reserved for flow control.
 ``0x48 0xzz 0xzz`` - absolute  
 ``0x49 0xzz 0xzz 0xzz`` - indexed
 #### BEQ
-``0x4A 0xzz 0xzz`` - absolute  
-``0x4B 0xzz 0xzz 0xzz`` - indexed
+``0x4A 0xzz 0xzz 0xzz`` - register, absolute  
+``0x4B 0xzz 0xzz 0xzz 0xzz`` - register, indexed
 #### BNE
-``0x4C 0xzz 0xzz`` - absolute  
-``0x4D 0xzz 0xzz 0xzz`` - indexed
+``0x4C 0xzz 0xzz 0xzz`` - register, absolute  
+``0x4D 0xzz 0xzz 0xzz 0xzz`` - register, indexed
 #### BZE
 ``0x4E 0xzz 0xzz`` - absolute  
 ``0x4F 0xzz 0xzz 0xzz`` - indexed
