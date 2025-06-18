@@ -15,6 +15,12 @@ For example,
 LOOP:
     the rest of the code here
 ```
+Please note that labels do not prevent execution of the code inside of them by advancement of the program counter.
+#### Subroutines
+The syntax for a subroutine is the same as a label, it just has ``sr`` in front of the name. Subroutines do, however,
+prevent the program counter from advancing into the subroutine with jumps around the subroutine code.
+#### Jumping to a Subroutine or Label
+To jump to a subroutine or label, put a ``~`` in front of the name.
 ### Numbers and Memory
 ### Numbers
 Numbers should be padded to the size expected by that instruction. By default, all numbers are memory addresses.  
@@ -37,7 +43,7 @@ Putting a ``%`` in front of an address signifies that it is absolute
 For example, ``lda %F2C3``
 #### Indexed
 Putting a ``$`` in front of an address indicates that it is indexed  
-For example, ``lda B78E, $FE``
+For example, ``lda $B78E, FE``
 #### Zero Page
 The assembler will automatically infer that the addressing mode is zero paged if the syntax is correct.  
 For example, ``lda A2``
