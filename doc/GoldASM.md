@@ -1,5 +1,11 @@
 # Gold assembly language specification
 ## Basic Syntax
+### Includes
+To include another file, use a ``#include filename``. This will simply append the file to the end of the file where it
+was included. Circular includes will cause a stack overflow. Includes inside of files that have been included are also
+supported.  
+To use a subroutine/label in another file, put the filename (except for the .gasm part), then a dot, then the label.  
+For example, ``jsr ~example.INIT``
 ### Comments
 To make a comment, simply put ``//`` before the comment. Everything after the semicolon up to the newline will be  a comment.  
 For example,  
@@ -18,7 +24,9 @@ LOOP:
 Please note that labels do not prevent execution of the code inside of them by advancement of the program counter.
 #### Subroutines
 The syntax for a subroutine is the same as a label, it just has ``sr`` in front of the name. Subroutines do, however,
-prevent the program counter from advancing into the subroutine with jumps around the subroutine code.
+prevent the program counter from advancing into the subroutine with jumps around the subroutine code.  
+Please note that there **CANNOT** be a subroutine and a label with the same name, which also means that files that have
+been included **CANNOT** have subroutines or labels with the same name as another subroutine or label.
 #### Jumping to a Subroutine or Label
 To jump to a subroutine or label, put a ``~`` in front of the name.
 ### Numbers and Memory

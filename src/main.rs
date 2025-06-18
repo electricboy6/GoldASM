@@ -1,4 +1,5 @@
-mod parser;
+mod asm_parser;
+mod assembler;
 
 use clap::{arg, Command, Arg};
 
@@ -36,8 +37,15 @@ fn main() {
     match matches.subcommand() {
         Some(("assemble", sub_matches)) => {
             let target_file = sub_matches.get_one::<String>("sourceFile").unwrap();
-            println!("Assembling file {target_file}");
-            parser::parse(target_file);
+            
+            let directory = target_file.rsplitn(2, '/').nth(1).unwrap().to_string() + "/";
+            let filename = target_file.rsplitn(2, '/').nth(0).unwrap();
+            
+            println!("Assembling file {filename} in directory {directory}");
+            
+            let parsed_values = asm_parser::parse(&directory, filename);
+            let instructions = asm_parser::postprocess(parsed_values.0, parsed_values.1);
+            println!("{:#?}", instructions);
         },
         Some(("simulate", sub_matches)) => {
             match sub_matches.subcommand() {

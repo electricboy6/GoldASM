@@ -1,0 +1,3 @@
+#include otherdependency.gasm
+sr RESET_VECTOR:
+    jmp %0200

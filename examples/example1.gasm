@@ -1,3 +1,5 @@
+#include dependency.gasm
+
 // init subroutine
 sr INIT:
     lda #0C// this will cause a crash, I'm pretty sure.
@@ -16,3 +18,4 @@ EXIT:
     rts
 
 jsr ~INIT
+jsr ~dependency.RESET_VECTOR

@@ -1,3 +1,31 @@
+use std::collections::HashSet;
+
+#[derive(Debug, PartialEq)]
+pub struct Includes {
+    files: HashSet<String>,
+    instructions: Vec<Vec<Instruction>>,
+}
+impl Includes {
+    pub fn new() -> Includes {
+        Includes {
+            files: HashSet::new(),
+            instructions: Vec::new(),
+        }
+    }
+    pub fn parse_include(&mut self, line: &str, directory: &str) {
+        let target_file = line.strip_prefix("#include ").unwrap().trim();
+        if !self.files.contains(&target_file.to_string()) {
+            self.files.insert(target_file.to_string());
+            let parsed_file = parse(directory, target_file);
+            // todo: figure out why nested includes don't work (otherdependency.gasm doesn't have anything in the final, postprocessed result)
+            self.instructions.push(parsed_file.0);
+            for file in parsed_file.1.files {
+                self.files.insert(file);
+            }
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum NumberType { 
     Binary,
@@ -144,7 +172,7 @@ impl Number {
 }
 
 #[derive(Debug, PartialEq)]
-struct Register {
+pub struct Register {
     pub address: u8,
 }
 impl Register {
@@ -153,7 +181,7 @@ impl Register {
     }
 }
 #[derive(Debug, PartialEq)]
-struct Immediate {
+pub struct Immediate {
     pub value: Number,
 }
 impl Immediate {
@@ -164,16 +192,16 @@ impl Immediate {
 }
 
 #[derive(Debug, PartialEq)]
-struct Label {
+pub struct Label {
     pub name: String
 }
 #[derive(Debug, PartialEq)]
-struct Subroutine {
+pub struct Subroutine {
     pub name: String
 }
 
 #[derive(Debug, PartialEq)]
-enum Instruction {
+pub enum Instruction {
     Noop,
     Add(Option<Register>, Option<(Register, Register)>),
     Subtract(Option<Register>, Option<(Register, Register)>),
@@ -211,14 +239,34 @@ enum Instruction {
     Subroutine(String),
 }
 
-pub fn parse(path: &str) {
-    println!("Parsing file {}", path);
-    let content = std::fs::read_to_string(path).expect("File not found.");
+pub fn postprocess(instructions: Vec<Instruction>, includes: Includes) -> Vec<Instruction> {
+    let mut final_instructions = instructions;
+    let mut included_instructions = includes.instructions;
+    
+    for included_instructions in included_instructions.iter_mut() {
+        final_instructions.append(included_instructions);
+    }
+    
+    final_instructions
+}
+
+pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
+    println!("Parsing file {}", directory.to_string() + filename);
+    
+    let content = std::fs::read_to_string(directory.to_string() + filename).expect("File not found.");
+    
     let mut instructions: Vec<Instruction> = Vec::new();
+    let mut includes = Includes::new();
+    
     for raw_line in content.lines() {
         // strip out leading and trailing whitespace, as well as comments
         let line = raw_line.splitn(2, '/').nth(0).unwrap_or("").trim();
         if line == "" {
+            continue;
+        }
+        
+        if line.contains("#include") {
+            includes.parse_include(line, directory);
             continue;
         }
         
@@ -401,7 +449,7 @@ pub fn parse(path: &str) {
             }
         }
     }
-    println!("Instructions: {instructions:?}");
+    (instructions, includes)
 }
 
 fn parse_register_or_2_register_instruction(words: Vec<&str>) -> (Option<Register>, Option<(Register, Register)>) {
