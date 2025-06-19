@@ -14,31 +14,35 @@ impl Includes {
     }
     pub fn parse_include(&mut self, line: &str, directory: &str) {
         let target_file = line.strip_prefix("#include ").unwrap().trim();
-        if !self.files.contains(&target_file.to_string()) {
-            self.files.insert(target_file.to_string());
+        if self.files.insert(target_file.to_string()) {
             let parsed_file = parse(directory, target_file);
-            // todo: figure out why nested includes don't work (otherdependency.gasm doesn't have anything in the final, postprocessed result)
-            self.instructions.push(parsed_file.0);
+            // deal with this file
+            let parsed_instructions = parsed_file.0;
+            self.instructions.push(parsed_instructions);
             for file in parsed_file.1.files {
                 self.files.insert(file);
+            }
+            // deal with the includes of this file (hopefully my logic is correct here)
+            for instructions in parsed_file.1.instructions {
+                self.instructions.push(instructions);
             }
         }
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum NumberType { 
     Binary,
     Hex
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum NumberSize {
     EightBit,
     SixteenBit,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum AddressMode {
     Absolute,
     Indexed,
@@ -46,7 +50,7 @@ pub enum AddressMode {
     ZeroPageIndexed
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Address {
     pub address: Number,
     pub offset: Option<Number>,
@@ -91,7 +95,7 @@ impl Address {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct NonZeroPageAddress {
     pub address: Number,
     pub offset: Option<Number>,
@@ -120,7 +124,7 @@ impl NonZeroPageAddress {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Number {
     pub value: String,
     pub size: NumberSize,
@@ -130,6 +134,7 @@ impl Number {
     pub fn from_str(value: &str) -> Number {
         let number_type;
         let number_size;
+        let final_value;
         if value.starts_with("^") {
             number_type = NumberType::Binary;
             if value.trim().len() == 9 { // there's still the carat to deal with
@@ -137,6 +142,7 @@ impl Number {
             } else {
                 number_size = NumberSize::SixteenBit;
             }
+            final_value = value.strip_prefix('^').unwrap();
         } else {
             number_type = NumberType::Hex;
             if value.trim().len() == 2 {
@@ -144,34 +150,34 @@ impl Number {
             } else {
                 number_size = NumberSize::SixteenBit;
             }
+            final_value = value;
         }
         Number {
-            value: value.to_string(),
+            value: final_value.to_string(),
             size: number_size,
             number_type
         }
     }
-    pub fn to_decimal(&self) -> i16 {
+    pub fn to_decimal(&self) -> u32 {
         let mut final_num = 0;
+        let stripped_value = self.value.trim();
         match self.number_type {
             NumberType::Binary => {
-                let stripped_value = self.value.trim().strip_prefix("^").unwrap();
                 for (index, character) in stripped_value.chars().enumerate() {
                     final_num += character.to_digit(2).unwrap() * index as u32;
                 }
             },
             NumberType::Hex => {
-                let stripped_value = self.value.trim();
                 for (index, character) in stripped_value.chars().enumerate() {
                     final_num += character.to_digit(16).unwrap() * index as u32;
                 }
             }
         }
-        final_num as i16
+        final_num
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub struct Register {
     pub address: u8,
 }
@@ -180,7 +186,7 @@ impl Register {
         Register { address: value.parse::<u8>().unwrap() }
     }
 }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Immediate {
     pub value: Number,
 }
@@ -191,16 +197,16 @@ impl Immediate {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Label {
     pub name: String
 }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Subroutine {
     pub name: String
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Instruction {
     Noop,
     Add(Option<Register>, Option<(Register, Register)>),
