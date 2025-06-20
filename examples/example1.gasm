@@ -9,11 +9,19 @@ sr INIT:
     add 02
     sta %03
     rol
+    lda #01
+    cpa 01
+    lda #00
+    cpa 00
+    lda #FF
+    cpa 02
 TEST:
+    add 00, 01
+    cpa 00
     sta $10, 06
     sta $^00001010, 05
-    beq 03, %F00F
-    jmp ~TEST
+    bne 02, ~TEST
+    jmp %F00F
 EXIT:
     rts INIT
     this isn't an instruction

@@ -244,112 +244,218 @@ pub fn assemble(instructions: Vec<Instruction>) -> Vec<u8> {
                 binary_instructions.push(0x2D);
                 binary_instructions.push(register.address);
             }
-            Instruction::BranchIfCarrySet(address) => {
-                match address.mode {
-                    AddressMode::Absolute => {
-                        binary_instructions.push(0x42);
-                        binary_instructions.append(&mut address.address.to_bytes());
+            Instruction::BranchIfCarrySet(address, label) => {
+                if let Some(address) = address {
+                    match address.mode {
+                        AddressMode::Absolute => {
+                            binary_instructions.push(0x42);
+                            binary_instructions.append(&mut address.address.to_bytes());
+                        }
+                        AddressMode::Indexed => {
+                            binary_instructions.push(0x43);
+                            binary_instructions.append(&mut address.address.to_bytes());
+                        }
+                        _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
                     }
-                    AddressMode::Indexed => {
-                        binary_instructions.push(0x43);
-                        binary_instructions.append(&mut address.address.to_bytes());
-                    }
-                    _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
+                } else {
+                    assert!(label.is_some());
+                    // absolute address mode for labels
+                    binary_instructions.push(0x42);
+                    label_usages.push(AssemblerLabelUse {
+                        name: label.unwrap().name,
+                        index: (binary_instructions.len() + 1) as u16
+                    });
+                    // allocate space for the address to be replaced
+                    binary_instructions.push(0x00);
+                    binary_instructions.push(0x00);
                 }
             }
-            Instruction::BranchIfCarryNotSet(address) => {
-                match address.mode {
-                    AddressMode::Absolute => {
-                        binary_instructions.push(0x44);
-                        binary_instructions.append(&mut address.address.to_bytes());
+            Instruction::BranchIfCarryNotSet(address, label) => {
+                if let Some(address) = address {
+                    match address.mode {
+                        AddressMode::Absolute => {
+                            binary_instructions.push(0x44);
+                            binary_instructions.append(&mut address.address.to_bytes());
+                        }
+                        AddressMode::Indexed => {
+                            binary_instructions.push(0x45);
+                            binary_instructions.append(&mut address.address.to_bytes());
+                        }
+                        _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
                     }
-                    AddressMode::Indexed => {
-                        binary_instructions.push(0x45);
-                        binary_instructions.append(&mut address.address.to_bytes());
-                    }
-                    _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
+                } else {
+                    assert!(label.is_some());
+                    // absolute address mode for labels
+                    binary_instructions.push(0x44);
+                    label_usages.push(AssemblerLabelUse {
+                        name: label.unwrap().name,
+                        index: (binary_instructions.len() + 1) as u16
+                    });
+                    // allocate space for the address to be replaced
+                    binary_instructions.push(0x00);
+                    binary_instructions.push(0x00);
                 }
             }
-            Instruction::BranchIfNegative(address) => {
-                match address.mode {
-                    AddressMode::Absolute => {
-                        binary_instructions.push(0x46);
-                        binary_instructions.append(&mut address.address.to_bytes());
+            Instruction::BranchIfNegative(address, label) => {
+                if let Some(address) = address {
+                    match address.mode {
+                        AddressMode::Absolute => {
+                            binary_instructions.push(0x46);
+                            binary_instructions.append(&mut address.address.to_bytes());
+                        }
+                        AddressMode::Indexed => {
+                            binary_instructions.push(0x47);
+                            binary_instructions.append(&mut address.address.to_bytes());
+                        }
+                        _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
                     }
-                    AddressMode::Indexed => {
-                        binary_instructions.push(0x47);
-                        binary_instructions.append(&mut address.address.to_bytes());
-                    }
-                    _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
+                } else {
+                    assert!(label.is_some());
+                    // absolute address mode for labels
+                    binary_instructions.push(0x46);
+                    label_usages.push(AssemblerLabelUse {
+                        name: label.unwrap().name,
+                        index: (binary_instructions.len() + 1) as u16
+                    });
+                    // allocate space for the address to be replaced
+                    binary_instructions.push(0x00);
+                    binary_instructions.push(0x00);
                 }
             }
-            Instruction::BranchIfPositive(address) => {
-                match address.mode {
-                    AddressMode::Absolute => {
-                        binary_instructions.push(0x48);
-                        binary_instructions.append(&mut address.address.to_bytes());
+            Instruction::BranchIfPositive(address, label) => {
+                if let Some(address) = address {
+                    match address.mode {
+                        AddressMode::Absolute => {
+                            binary_instructions.push(0x48);
+                            binary_instructions.append(&mut address.address.to_bytes());
+                        }
+                        AddressMode::Indexed => {
+                            binary_instructions.push(0x49);
+                            binary_instructions.append(&mut address.address.to_bytes());
+                        }
+                        _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
                     }
-                    AddressMode::Indexed => {
-                        binary_instructions.push(0x49);
-                        binary_instructions.append(&mut address.address.to_bytes());
-                    }
-                    _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
+                } else {
+                    assert!(label.is_some());
+                    // absolute address mode for labels
+                    binary_instructions.push(0x48);
+                    label_usages.push(AssemblerLabelUse {
+                        name: label.unwrap().name,
+                        index: (binary_instructions.len() + 1) as u16
+                    });
+                    // allocate space for the address to be replaced
+                    binary_instructions.push(0x00);
+                    binary_instructions.push(0x00);
                 }
             }
-            Instruction::BranchIfEqual(register, address) => {
-                match address.mode {
-                    AddressMode::Absolute => {
-                        binary_instructions.push(0x4A);
-                        binary_instructions.push(register.address);
-                        binary_instructions.append(&mut address.address.to_bytes());
+            Instruction::BranchIfEqual(register, address, label) => {
+                if let Some(address) = address {
+                    match address.mode {
+                        AddressMode::Absolute => {
+                            binary_instructions.push(0x4A);
+                            binary_instructions.push(register.address);
+                            binary_instructions.append(&mut address.address.to_bytes());
+                        }
+                        AddressMode::Indexed => {
+                            binary_instructions.push(0x4B);
+                            binary_instructions.push(register.address);
+                            binary_instructions.append(&mut address.address.to_bytes());
+                        }
+                        _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
                     }
-                    AddressMode::Indexed => {
-                        binary_instructions.push(0x4B);
-                        binary_instructions.push(register.address);
-                        binary_instructions.append(&mut address.address.to_bytes());
-                    }
-                    _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
+                } else {
+                    assert!(label.is_some());
+                    // absolute address mode for labels
+                    binary_instructions.push(0x4A);
+                    binary_instructions.push(register.address);
+                    label_usages.push(AssemblerLabelUse {
+                        name: label.unwrap().name,
+                        index: (binary_instructions.len() + 1) as u16
+                    });
+                    // allocate space for the address to be replaced
+                    binary_instructions.push(0x00);
+                    binary_instructions.push(0x00);
                 }
             }
-            Instruction::BranchIfNotEqual(register, address) => {
-                match address.mode {
-                    AddressMode::Absolute => {
-                        binary_instructions.push(0x4C);
-                        binary_instructions.push(register.address);
-                        binary_instructions.append(&mut address.address.to_bytes());
+            Instruction::BranchIfNotEqual(register, address, label) => {
+                if let Some(address) = address {
+                    match address.mode {
+                        AddressMode::Absolute => {
+                            binary_instructions.push(0x4C);
+                            binary_instructions.push(register.address);
+                            binary_instructions.append(&mut address.address.to_bytes());
+                        }
+                        AddressMode::Indexed => {
+                            binary_instructions.push(0x4D);
+                            binary_instructions.push(register.address);
+                            binary_instructions.append(&mut address.address.to_bytes());
+                        }
+                        _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
                     }
-                    AddressMode::Indexed => {
-                        binary_instructions.push(0x4D);
-                        binary_instructions.push(register.address);
-                        binary_instructions.append(&mut address.address.to_bytes());
-                    }
-                    _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
+                } else {
+                    assert!(label.is_some());
+                    // absolute address mode for labels
+                    binary_instructions.push(0x4C);
+                    binary_instructions.push(register.address);
+                    label_usages.push(AssemblerLabelUse {
+                        name: label.unwrap().name,
+                        index: (binary_instructions.len() + 1) as u16
+                    });
+                    // allocate space for the address to be replaced
+                    binary_instructions.push(0x00);
+                    binary_instructions.push(0x00);
                 }
             }
-            Instruction::BranchIfZero(address) => {
-                match address.mode {
-                    AddressMode::Absolute => {
-                        binary_instructions.push(0x4E);
-                        binary_instructions.append(&mut address.address.to_bytes());
+            Instruction::BranchIfZero(address, label) => {
+                if let Some(address) = address {
+                    match address.mode {
+                        AddressMode::Absolute => {
+                            binary_instructions.push(0x4E);
+                            binary_instructions.append(&mut address.address.to_bytes());
+                        }
+                        AddressMode::Indexed => {
+                            binary_instructions.push(0x4F);
+                            binary_instructions.append(&mut address.address.to_bytes());
+                        }
+                        _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
                     }
-                    AddressMode::Indexed => {
-                        binary_instructions.push(0x4F);
-                        binary_instructions.append(&mut address.address.to_bytes());
-                    }
-                    _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
+                } else {
+                    assert!(label.is_some());
+                    // absolute address mode for labels
+                    binary_instructions.push(0x4E);
+                    label_usages.push(AssemblerLabelUse {
+                        name: label.unwrap().name,
+                        index: (binary_instructions.len() + 1) as u16
+                    });
+                    // allocate space for the address to be replaced
+                    binary_instructions.push(0x00);
+                    binary_instructions.push(0x00);
                 }
             }
-            Instruction::BranchIfNotZero(address) => {
-                match address.mode {
-                    AddressMode::Absolute => {
-                        binary_instructions.push(0x50);
-                        binary_instructions.append(&mut address.address.to_bytes());
+            Instruction::BranchIfNotZero(address, label) => {
+                if let Some(address) = address {
+                    match address.mode {
+                        AddressMode::Absolute => {
+                            binary_instructions.push(0x50);
+                            binary_instructions.append(&mut address.address.to_bytes());
+                        }
+                        AddressMode::Indexed => {
+                            binary_instructions.push(0x51);
+                            binary_instructions.append(&mut address.address.to_bytes());
+                        }
+                        _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
                     }
-                    AddressMode::Indexed => {
-                        binary_instructions.push(0x51);
-                        binary_instructions.append(&mut address.address.to_bytes());
-                    }
-                    _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
+                } else {
+                    assert!(label.is_some());
+                    // absolute address mode for labels
+                    binary_instructions.push(0x50);
+                    label_usages.push(AssemblerLabelUse {
+                        name: label.unwrap().name,
+                        index: (binary_instructions.len() + 1) as u16
+                    });
+                    // allocate space for the address to be replaced
+                    binary_instructions.push(0x00);
+                    binary_instructions.push(0x00);
                 }
             }
             Instruction::Jump(address, label) => {
@@ -381,7 +487,7 @@ pub fn assemble(instructions: Vec<Instruction>) -> Vec<u8> {
             Instruction::Label(name) => {
                 labels.push(AssemblerLabel {
                     name,
-                    index: (binary_instructions.len()) as u16
+                    index: binary_instructions.len() as u16
                 });
             }
             Instruction::PushProgramCounter => {
@@ -421,16 +527,20 @@ pub fn assemble(instructions: Vec<Instruction>) -> Vec<u8> {
     binary_instructions
 }
 
-pub fn write(binary: Vec<u8>, directory: String, filename: &str) {
+pub fn write(binary: &Vec<u8>, directory: String, filename: &str) {
     let file = std::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
         .open(directory.clone() + filename);
     
     if file.is_err() {
-        panic!("Unable to create file \"{filename}\" in directory \"{directory}\"!");
+        eprintln!("WARNING: Unable to create file \"{filename}\" (removing file, trying again)");
+        std::fs::remove_file(directory.clone() + filename).expect("Failed to remove existing target file!");
+        write(binary, directory, filename);
+        return;
     }
     let mut file = file.unwrap();
-    file.write_all(&binary).expect(&format!("Unable to write to file \"{filename}\" in directory \"{directory}\"!"));
+    file.write_all(binary).expect(&format!("Unable to write to file \"{filename}\" in directory \"{directory}\"!"));
     file.sync_all().expect(&format!("Unable to write to file \"{filename}\" in directory \"{directory}\"!"));
+    println!("Successfully wrote binary to file \"{filename}\"");
 }

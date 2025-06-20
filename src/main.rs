@@ -14,7 +14,7 @@ fn main() {
             Command::new("assemble")
                 .about("Assemble the given file")
                 .arg(Arg::new("sourceFile").required(true))
-                .arg(arg!(-o --output [output]).default_value("a.out"))
+                .arg(arg!(-o --output [output]).default_value("program.bin"))
         )
         .subcommand(
             Command::new("simulate")
@@ -43,7 +43,7 @@ fn main() {
             
             let directory = target_file.rsplitn(2, '/').nth(1).unwrap().to_string() + "/";
             let filename = target_file.rsplitn(2, '/').nth(0).unwrap();
-            println!("Assembling file {filename} in directory {directory}");
+            println!("INFO: Assembling file {filename} in directory {directory}");
             
             let parsed_values = asm_parser::parse(&directory, filename);
             
@@ -51,8 +51,8 @@ fn main() {
             
             let binary_instructions = assembler::assemble(instructions);
             
-            assembler::write(binary_instructions.clone(), directory, output_file);
-            println!("Assembled Binary: {:02x?}", binary_instructions);
+            assembler::write(&binary_instructions, directory, output_file);
+            //println!("Assembled Binary: {:02x?}", binary_instructions);
         },
         Some(("simulate", sub_matches)) => {
             match sub_matches.subcommand() {

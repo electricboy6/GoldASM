@@ -237,15 +237,15 @@ pub enum Instruction {
     StoreAccumulator(Address),
     CopyAccumulatorToRegister(Register),
     CopyRegisterToAccumulator(Register),
-    BranchIfCarrySet(NonZeroPageAddress),
-    BranchIfCarryNotSet(NonZeroPageAddress),
-    BranchIfNegative(NonZeroPageAddress),
-    BranchIfPositive(NonZeroPageAddress),
-    BranchIfEqual(Register, NonZeroPageAddress),
-    BranchIfNotEqual(Register, NonZeroPageAddress),
-    BranchIfZero(NonZeroPageAddress),
-    BranchIfNotZero(NonZeroPageAddress),
-    Jump(Option<NonZeroPageAddress>, Option<Label>), // The instruction MUST be a label instruction
+    BranchIfCarrySet(Option<NonZeroPageAddress>, Option<Label>),
+    BranchIfCarryNotSet(Option<NonZeroPageAddress>, Option<Label>),
+    BranchIfNegative(Option<NonZeroPageAddress>, Option<Label>),
+    BranchIfPositive(Option<NonZeroPageAddress>, Option<Label>),
+    BranchIfEqual(Register, Option<NonZeroPageAddress>, Option<Label>),
+    BranchIfNotEqual(Register, Option<NonZeroPageAddress>, Option<Label>),
+    BranchIfZero(Option<NonZeroPageAddress>, Option<Label>),
+    BranchIfNotZero(Option<NonZeroPageAddress>, Option<Label>),
+    Jump(Option<NonZeroPageAddress>, Option<Label>),
     JumpSubroutine(Option<NonZeroPageAddress>, Option<Subroutine>),
     ReturnFromSubroutine(Subroutine),
     Label(String),
@@ -267,7 +267,7 @@ pub fn postprocess(instructions: Vec<Instruction>, includes: Includes) -> Vec<In
 }
 
 pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
-    println!("Parsing file {}", directory.to_string() + filename);
+    println!("INFO: Parsing file {}", directory.to_string() + filename);
     let module_name_dot = &*(filename.strip_suffix(".gasm").unwrap().to_string() + ".");
     
     let content = std::fs::read_to_string(directory.to_string() + filename).expect("File not found.");
@@ -388,48 +388,205 @@ pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
                     Register::from_str(parameter_str)
                 ));
             },
-            // todo: make branches support labels (labels actually make this like 384x harder)
             "bcs" => {
-                instructions.push(Instruction::BranchIfCarrySet(
-                    NonZeroPageAddress::from_str(parameter_str)
-                ));
+                if parameter_str.contains('~') {
+                    // using a name
+                    if parameter_str.contains('.') {
+                        // in another file, don't add our filename
+                        instructions.push(Instruction::BranchIfCarrySet(
+                            None, Some(Label {
+                                name: parameter_str.strip_prefix('~').unwrap().to_string(),
+                            })
+                        ));
+                    } else {
+                        // in our file, add our filename
+                        instructions.push(Instruction::BranchIfCarrySet(
+                            None, Some(Label {
+                                name: module_name_dot.to_string() + parameter_str.strip_prefix('~').unwrap()
+                            })
+                        ));
+                    }
+                } else {
+                    instructions.push(Instruction::BranchIfCarrySet(
+                        Some(NonZeroPageAddress::from_str(parameter_str)), None
+                    ));
+                }
             },
             "bcc" => {
-                instructions.push(Instruction::BranchIfCarryNotSet(
-                    NonZeroPageAddress::from_str(parameter_str)
-                ));
+                if parameter_str.contains('~') {
+                    // using a name
+                    if parameter_str.contains('.') {
+                        // in another file, don't add our filename
+                        instructions.push(Instruction::BranchIfCarryNotSet(
+                            None, Some(Label {
+                                name: parameter_str.strip_prefix('~').unwrap().to_string(),
+                            })
+                        ));
+                    } else {
+                        // in our file, add our filename
+                        instructions.push(Instruction::BranchIfCarryNotSet(
+                            None, Some(Label {
+                                name: module_name_dot.to_string() + parameter_str.strip_prefix('~').unwrap()
+                            })
+                        ));
+                    }
+                } else {
+                    instructions.push(Instruction::BranchIfCarryNotSet(
+                        Some(NonZeroPageAddress::from_str(parameter_str)), None
+                    ));
+                }
             },
             "bn" => {
-                instructions.push(Instruction::BranchIfNegative(
-                    NonZeroPageAddress::from_str(parameter_str)
-                ));
+                if parameter_str.contains('~') {
+                    // using a name
+                    if parameter_str.contains('.') {
+                        // in another file, don't add our filename
+                        instructions.push(Instruction::BranchIfNegative(
+                            None, Some(Label {
+                                name: parameter_str.strip_prefix('~').unwrap().to_string(),
+                            })
+                        ));
+                    } else {
+                        // in our file, add our filename
+                        instructions.push(Instruction::BranchIfNegative(
+                            None, Some(Label {
+                                name: module_name_dot.to_string() + parameter_str.strip_prefix('~').unwrap()
+                            })
+                        ));
+                    }
+                } else {
+                    instructions.push(Instruction::BranchIfNegative(
+                        Some(NonZeroPageAddress::from_str(parameter_str)), None
+                    ));
+                }
             },
             "bp" => {
-                instructions.push(Instruction::BranchIfPositive(
-                    NonZeroPageAddress::from_str(parameter_str)
-                ));
+                if parameter_str.contains('~') {
+                    // using a name
+                    if parameter_str.contains('.') {
+                        // in another file, don't add our filename
+                        instructions.push(Instruction::BranchIfPositive(
+                            None, Some(Label {
+                                name: parameter_str.strip_prefix('~').unwrap().to_string(),
+                            })
+                        ));
+                    } else {
+                        // in our file, add our filename
+                        instructions.push(Instruction::BranchIfPositive(
+                            None, Some(Label {
+                                name: module_name_dot.to_string() + parameter_str.strip_prefix('~').unwrap()
+                            })
+                        ));
+                    }
+                } else {
+                    instructions.push(Instruction::BranchIfPositive(
+                        Some(NonZeroPageAddress::from_str(parameter_str)), None
+                    ));
+                }
             },
             "beq" => {
-                instructions.push(Instruction::BranchIfEqual(
-                    Register::from_str(words[1].strip_suffix(',').unwrap()),
-                    NonZeroPageAddress::from_str(parameter_str.split_once(' ').unwrap().1)
-                ));
+                let register = Register::from_str(words[1].strip_suffix(',').unwrap());
+                if parameter_str.contains('~') {
+                    // using a name
+                    if parameter_str.contains('.') {
+                        // in another file, don't add our filename
+                        instructions.push(Instruction::BranchIfEqual(
+                            register,
+                            None, Some(Label {
+                                name: words[2].strip_prefix('~').unwrap().to_string(),
+                            })
+                        ));
+                    } else {
+                        // in our file, add our filename
+                        instructions.push(Instruction::BranchIfEqual(
+                            register,
+                            None, Some(Label {
+                                name: module_name_dot.to_string() + words[2].strip_prefix('~').unwrap()
+                            })
+                        ));
+                    }
+                } else {
+                    instructions.push(Instruction::BranchIfEqual(
+                        register,
+                        Some(NonZeroPageAddress::from_str(words[2])), None
+                    ));
+                }
             },
             "bne" => {
-                instructions.push(Instruction::BranchIfNotEqual(
-                    Register::from_str(words[1].strip_suffix(',').unwrap()),
-                    NonZeroPageAddress::from_str(parameter_str.split_once(' ').unwrap().1)
-                ));
+                let register = Register::from_str(words[1].strip_suffix(',').unwrap());
+                if parameter_str.contains('~') {
+                    // using a name
+                    if parameter_str.contains('.') {
+                        // in another file, don't add our filename
+                        instructions.push(Instruction::BranchIfNotEqual(
+                            register,
+                            None, Some(Label {
+                                name: words[2].strip_prefix('~').unwrap().to_string(),
+                            })
+                        ));
+                    } else {
+                        // in our file, add our filename
+                        instructions.push(Instruction::BranchIfNotEqual(
+                            register,
+                            None, Some(Label {
+                                name: module_name_dot.to_string() + words[2].strip_prefix('~').unwrap()
+                            })
+                        ));
+                    }
+                } else {
+                    instructions.push(Instruction::BranchIfNotEqual(
+                        register,
+                        Some(NonZeroPageAddress::from_str(words[2])), None
+                    ));
+                }
             },
             "bze" => {
-                instructions.push(Instruction::BranchIfZero(
-                    NonZeroPageAddress::from_str(parameter_str)
-                ));
+                if parameter_str.contains('~') {
+                    // using a name
+                    if parameter_str.contains('.') {
+                        // in another file, don't add our filename
+                        instructions.push(Instruction::BranchIfZero(
+                            None, Some(Label {
+                                name: parameter_str.strip_prefix('~').unwrap().to_string(),
+                            })
+                        ));
+                    } else {
+                        // in our file, add our filename
+                        instructions.push(Instruction::BranchIfZero(
+                            None, Some(Label {
+                                name: module_name_dot.to_string() + parameter_str.strip_prefix('~').unwrap()
+                            })
+                        ));
+                    }
+                } else {
+                    instructions.push(Instruction::BranchIfZero(
+                        Some(NonZeroPageAddress::from_str(parameter_str)), None
+                    ));
+                }
             },
             "bnz" => {
-                instructions.push(Instruction::BranchIfNotZero(
-                    NonZeroPageAddress::from_str(parameter_str)
-                ));
+                if parameter_str.contains('~') {
+                    // using a name
+                    if parameter_str.contains('.') {
+                        // in another file, don't add our filename
+                        instructions.push(Instruction::BranchIfNotZero(
+                            None, Some(Label {
+                                name: parameter_str.strip_prefix('~').unwrap().to_string(),
+                            })
+                        ));
+                    } else {
+                        // in our file, add our filename
+                        instructions.push(Instruction::BranchIfNotZero(
+                            None, Some(Label {
+                                name: module_name_dot.to_string() + parameter_str.strip_prefix('~').unwrap()
+                            })
+                        ));
+                    }
+                } else {
+                    instructions.push(Instruction::BranchIfNotZero(
+                        Some(NonZeroPageAddress::from_str(parameter_str)), None
+                    ));
+                }
             },
             "jmp" => {
                 if parameter_str.contains('~') {
@@ -502,7 +659,7 @@ fn parse_register_or_2_register_instruction(words: Vec<&str>) -> (Option<Registe
         (Some(Register::from_str(words[1])), None)
     } else {
         (None, Some((
-            Register::from_str(words[1]),
+            Register::from_str(words[1].strip_suffix(',').unwrap()),
             Register::from_str(words[2])
         )))
     }
