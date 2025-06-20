@@ -31,10 +31,9 @@ accumulator, storing a value from the accumulator to RAM, copying the accumulato
 the accumulator, loading an immediate to the accumulator, and potentially more instructions if I see fit.
 ### Supported Flow Control Operations
 The ISA supports branching on carry set, branching on carry not set, branching on negative, branching on positive,
-branching on equal, branching on not equal, branching on zero, branching on not zero, jumping, jumping to a subroutine,
-and returning from a subroutine.
-The current address is pushed onto the stack when a jsr instruction is called and popped from the stack when a subroutine
-is returned from.
+branching on equal, branching on not equal, branching on zero, branching on not zero, pushing the program counter to the
+stack, popping the program counter from the stack, and jumping (subroutines are implemented with jumps, pushing to the
+stack, and pulling from the stack).
 ## Instructions
 ### Instruction Format
 Instructions are in the format of instruction, optional immediate, and optional immediate. The number of immediates
@@ -117,10 +116,7 @@ Opcodes ``0x42``-``0x62`` have been reserved for flow control.
 #### JMP
 ``0x52 0xzz 0xzz`` - absolute  
 ``0x53 0xzz 0xzz 0xzz`` - indexed
-#### JSR
-``0x54 0xzz 0xzz`` - absolute  
-``0x55 0xzz 0xzz 0xzz`` - indexed
-#### RTS
-``0x56``
+#### PHPC/PLPC
+``0x54``, ``0x55``
 ### Other operations
 Other operations besides the ones described should reset the CPU.

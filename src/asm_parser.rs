@@ -53,7 +53,7 @@ pub enum AddressMode {
 #[derive(Debug, PartialEq, Clone)]
 pub struct Address {
     pub address: Number,
-    pub offset: Option<Number>,
+    pub offset: Option<Register>,
     pub mode: AddressMode,
 }
 impl Address {
@@ -69,7 +69,7 @@ impl Address {
             address = Number::from_str(address_value);
             
             let offset_value = value.split_whitespace().nth(1).unwrap();
-            offset = Some(Number::from_str(offset_value));
+            offset = Some(Register::from_str(offset_value));
             if address.size == NumberSize::EightBit {
                 mode = AddressMode::ZeroPageIndexed;
             } else {
@@ -98,7 +98,7 @@ impl Address {
 #[derive(Debug, PartialEq, Clone)]
 pub struct NonZeroPageAddress {
     pub address: Number,
-    pub offset: Option<Number>,
+    pub offset: Option<Register>,
     pub mode: AddressMode,
 }
 impl NonZeroPageAddress {
@@ -183,7 +183,9 @@ pub struct Register {
 }
 impl Register {
     pub fn from_str(value: &str) -> Register {
-        Register { address: value.parse::<u8>().unwrap() }
+        let target_register = Number::from_str(value);
+        assert_eq!(target_register.size, NumberSize::EightBit);
+        Register { address: target_register.to_decimal() as u8 }
     }
 }
 #[derive(Debug, PartialEq, Clone)]
@@ -240,9 +242,12 @@ pub enum Instruction {
     BranchIfNotZero(NonZeroPageAddress),
     Jump(Option<NonZeroPageAddress>, Option<Label>), // The instruction MUST be a label instruction
     JumpSubroutine(Option<NonZeroPageAddress>, Option<Subroutine>),
-    ReturnFromSubroutine,
+    ReturnFromSubroutine(Subroutine),
     Label(String),
     Subroutine(String),
+    PushProgramCounter,
+    PopProgramCounter,
+    IncrementProgramCounter,
 }
 
 pub fn postprocess(instructions: Vec<Instruction>, includes: Includes) -> Vec<Instruction> {
@@ -258,6 +263,7 @@ pub fn postprocess(instructions: Vec<Instruction>, includes: Includes) -> Vec<In
 
 pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
     println!("Parsing file {}", directory.to_string() + filename);
+    let module_name_dot = &*(filename.strip_suffix(".gasm").unwrap().to_string() + ".");
     
     let content = std::fs::read_to_string(directory.to_string() + filename).expect("File not found.");
     
@@ -281,14 +287,14 @@ pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
             if line.contains("sr") {
                 // this is a subroutine
                 instructions.push(Instruction::Subroutine(
-                    line.strip_suffix(':').unwrap().strip_prefix("sr").unwrap().trim()
-                        .to_string()
+                    module_name_dot.to_string() + line.strip_suffix(':').unwrap()
+                        .strip_prefix("sr").unwrap().trim()
                 ));
                 continue;
             }
             // this is a label
             instructions.push(Instruction::Label(
-                line.strip_suffix(':').unwrap().to_string()
+                module_name_dot.to_string() + line.strip_suffix(':').unwrap()
             ));
             continue;
         }
@@ -421,11 +427,22 @@ pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
             },
             "jmp" => {
                 if parameter_str.contains('~') {
-                    instructions.push(Instruction::Jump(
-                        None, Some(Label {
-                            name: parameter_str.strip_prefix('~').unwrap().to_string()
-                        })
-                    ));
+                    // using a name
+                    if parameter_str.contains('.') {
+                        // in another file, don't add our filename
+                        instructions.push(Instruction::Jump(
+                            None, Some(Label {
+                                name: parameter_str.strip_prefix('~').unwrap().to_string(),
+                            })
+                        ));
+                    } else {
+                        // in our file, add our filename
+                        instructions.push(Instruction::Jump(
+                            None, Some(Label {
+                                name: module_name_dot.to_string() + parameter_str.strip_prefix('~').unwrap()
+                            })
+                        ));
+                    }
                 } else {
                     instructions.push(Instruction::Jump(
                         Some(NonZeroPageAddress::from_str(parameter_str)), None
@@ -434,11 +451,22 @@ pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
             },
             "jsr" => {
                 if parameter_str.contains('~') {
-                    instructions.push(Instruction::JumpSubroutine(
-                        None, Some(Subroutine {
-                            name: parameter_str.strip_prefix('~').unwrap().to_string()
-                        })
-                    ));
+                    // using a name
+                    if parameter_str.contains('.') {
+                        // in another file, don't add our filename
+                        instructions.push(Instruction::JumpSubroutine(
+                            None, Some(Subroutine {
+                                name: parameter_str.strip_prefix('~').unwrap().to_string(),
+                            })
+                        ));
+                    } else {
+                        // in our file, add our filename
+                        instructions.push(Instruction::JumpSubroutine(
+                            None, Some(Subroutine {
+                                name: module_name_dot.to_string() + parameter_str.strip_prefix('~').unwrap()
+                            })
+                        ));
+                    }
                 } else {
                     instructions.push(Instruction::JumpSubroutine(
                         Some(NonZeroPageAddress::from_str(parameter_str)), None
@@ -446,12 +474,17 @@ pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
                 }
             },
             "rts" => {
-                instructions.push(Instruction::ReturnFromSubroutine);
+                let label = words[1].trim();
+                instructions.push(Instruction::ReturnFromSubroutine(
+                    Subroutine { name: module_name_dot.to_string() + label + "_EndSubroutine" }
+                ));
             },
+            "phpc" => instructions.push(Instruction::PushProgramCounter),
+            "plpc" => instructions.push(Instruction::PopProgramCounter),
             "//" => continue,
             "" => continue,
             _ => {
-                println!("Not an instruction");
+                println!("Not an instruction (line: {line})");
             }
         }
     }

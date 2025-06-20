@@ -29,6 +29,8 @@ Please note that there **CANNOT** be a subroutine and a label with the same name
 been included **CANNOT** have subroutines or labels with the same name as another subroutine or label.
 #### Jumping to a Subroutine or Label
 To jump to a subroutine or label, put a ``~`` in front of the name.
+#### Returning from a Subroutine
+To return from a subroutine, write ``rts THE_NAME_OF_THE_SUBROUTINE`` without the tilde.
 ### Numbers and Memory
 ### Numbers
 Numbers should be padded to the size expected by that instruction. By default, all numbers are memory addresses.  
@@ -63,7 +65,7 @@ Instructions are not case sensitive.
 #### Parameters
 Parameters are separated with commas.
 #### Instruction List
-The parameters of the function are in parenthesis. If there are multiple versions, they are nested.  
+The parameters of the function are in parentheses. If there are multiple versions, they are nested.  
 ``a`` is absolute  
 ``i`` is indexed  
 ``zp`` is zero paged  
@@ -104,4 +106,6 @@ The parameters of the function are in parenthesis. If there are multiple version
 - jmp   ((a), (i))
 - jsr   ((a), (i))
 - rts
+- phpc
+- plpc
 ```

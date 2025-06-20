@@ -4,18 +4,19 @@
 sr INIT:
     lda #0C// this will cause a crash, I'm pretty sure.
     sta %0000
-    lda $0100, ^00101101
-    lda $^01010011, FF// this is a line designed to be brutal
+    lda $0100, 07
+    lda $^01010011, 03// this is a line designed to be brutal
     add 02
     sta %03
     rol
 TEST:
-    sta $00, FC
-    sta $^00001010, AB
+    sta $00, 06
+    sta $^00001010, 05
     beq 03, %F00F
     jmp ~TEST
 EXIT:
-    rts
+    rts INIT
+    this isn't an instruction
 
 jsr ~INIT
 jsr ~dependency.RESET_VECTOR

@@ -45,7 +45,8 @@ fn main() {
             
             let parsed_values = asm_parser::parse(&directory, filename);
             let instructions = asm_parser::postprocess(parsed_values.0, parsed_values.1);
-            println!("{:#?}", instructions);
+            let processed_instructions = assembler::preprocess(instructions);
+            println!("{:#?}", processed_instructions);
         },
         Some(("simulate", sub_matches)) => {
             match sub_matches.subcommand() {
