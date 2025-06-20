@@ -49,7 +49,7 @@ accumulator. If it has one immediate, it operates on the accumulator then the re
 has 2 immediates, it operates on the register specified by the first immediate, then the register specified by the second
 immediate.
 #### Noop
-``0x00``, ``0xFF``
+``0x00``
 #### Addition
 ``0x01 0xzz``, ``0x02 0xzz 0xzz``
 #### Subtraction
@@ -118,5 +118,8 @@ Opcodes ``0x42``-``0x62`` have been reserved for flow control.
 ``0x53 0xzz 0xzz 0xzz`` - indexed
 #### PHPC/PLPC
 ``0x54``, ``0x55``
+#### INCPC
+``0x56``
 ### Other operations
-Other operations besides the ones described should reset the CPU.
+Other operations besides the ones described should reset the CPU. The instruction ``FF`` is never valid and must reset
+the CPU.

@@ -158,22 +158,27 @@ impl Number {
             number_type
         }
     }
-    pub fn to_decimal(&self) -> u32 {
-        let mut final_num = 0;
+    pub fn to_decimal(&self) -> u16 {
         let stripped_value = self.value.trim();
         match self.number_type {
             NumberType::Binary => {
-                for (index, character) in stripped_value.chars().enumerate() {
-                    final_num += character.to_digit(2).unwrap() * index as u32;
-                }
+                u16::from_str_radix(stripped_value, 2).unwrap()
             },
             NumberType::Hex => {
-                for (index, character) in stripped_value.chars().enumerate() {
-                    final_num += character.to_digit(16).unwrap() * index as u32;
-                }
+                u16::from_str_radix(stripped_value, 16).unwrap()
             }
         }
-        final_num
+    }
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let decimal_value = self.to_decimal();
+        // the isa is big endian, so we use big endian here
+        //                                              |
+        //                                              V
+        let mut bytes = decimal_value.to_be_bytes().to_vec();
+        if self.size == NumberSize::EightBit {
+            bytes.remove(0);
+        }
+        bytes
     }
 }
 
@@ -383,6 +388,7 @@ pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
                     Register::from_str(parameter_str)
                 ));
             },
+            // todo: make branches support labels (labels actually make this like 384x harder)
             "bcs" => {
                 instructions.push(Instruction::BranchIfCarrySet(
                     NonZeroPageAddress::from_str(parameter_str)
@@ -484,7 +490,7 @@ pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
             "//" => continue,
             "" => continue,
             _ => {
-                println!("Not an instruction (line: {line})");
+                eprintln!("WARNING: While parsing {}, got line \"{line}\", which is not an instruction!", directory.to_string() + filename);
             }
         }
     }
