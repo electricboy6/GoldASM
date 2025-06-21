@@ -1,10 +1,13 @@
 //#include dependency.gasm
 
+#define test_value_1 %1203
+
 // init subroutine
 sr INIT:
     lda #0C// this will cause a crash, I'm pretty sure.
     sta %0101
     lda $0101, 07
+    sta $*test_value_1, 02
     lda $^01010011, 03// this is a line designed to be brutal
     add 02
     sta %03

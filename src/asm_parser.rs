@@ -212,6 +212,11 @@ pub struct Label {
 pub struct Subroutine {
     pub name: String
 }
+#[derive(Debug, PartialEq, Clone)]
+pub struct Pointer {
+    pub name: String,
+    pub address: Address
+}
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Instruction {
@@ -253,6 +258,8 @@ pub enum Instruction {
     PushProgramCounter,
     PopProgramCounter,
     IncrementProgramCounter,
+    Pointer(String, Address),
+    PointerUse(Pointer),
 }
 
 pub fn postprocess(instructions: Vec<Instruction>, includes: Includes) -> Vec<Instruction> {
@@ -309,6 +316,13 @@ pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
         // rest of line after the instruction is interpreted
         // defaults to empty strings so instructions with no parameters won't panic
         let parameter_str = line.split_once(" ").unwrap_or(("", "")).1;
+
+        // pointer logic
+        // todo: add pointers into the address implementations and process them in the same step as subroutines
+        if line.contains("#define") {
+            // pointer creation
+            instructions.push(Instruction::Pointer( words[1].to_string(), Address::from_str(words[2])));
+        }
         
         // normal instruction
         match words[0].trim().to_lowercase().as_str() {

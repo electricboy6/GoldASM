@@ -62,12 +62,12 @@ pub fn assemble(instructions: Vec<Instruction>) -> Vec<u8> {
     let processed_instructions = preprocess(instructions);
     // make the output vector
     let mut binary_instructions = Vec::with_capacity(processed_instructions.len());
-    
+
     // make the vector of labels
     let mut labels = Vec::new();
     // make the vector of label usages
     let mut label_usages = Vec::new();
-    
+
     // iterate through the instructions and insert as we go (assembler pass 2)
     for instruction in processed_instructions {
         match instruction {
@@ -505,7 +505,9 @@ pub fn assemble(instructions: Vec<Instruction>) -> Vec<u8> {
     // make sure that even if there is a label at the end of the program, it won't crash
     // only sacrifices a byte of space, so it's worth it
     binary_instructions.push(0x00);
-    
+
+    // compute addresses of all labels and replace labels with addresses
+    // pass 3 in assembling sequence
     for label_use in label_usages {
         let mut target_label = &AssemblerLabel {
             name: "".to_string(),
@@ -522,8 +524,8 @@ pub fn assemble(instructions: Vec<Instruction>) -> Vec<u8> {
         binary_instructions[(label_use.index + 0) as usize] = label_address[1];
         binary_instructions[(label_use.index - 1) as usize] = label_address[0];
     }
-    
-    
+
+
     binary_instructions
 }
 
@@ -532,7 +534,7 @@ pub fn write(binary: &Vec<u8>, directory: String, filename: &str) {
         .write(true)
         .create_new(true)
         .open(directory.clone() + filename);
-    
+
     if file.is_err() {
         eprintln!("WARNING: Unable to create file \"{filename}\" (removing file, trying again)");
         std::fs::remove_file(directory.clone() + filename).expect("Failed to remove existing target file!");
