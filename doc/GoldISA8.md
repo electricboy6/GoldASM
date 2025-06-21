@@ -4,9 +4,13 @@ The Gold ISA is designed to be an 8 bit ISA with variable instruction length.
 Up to 2 immediate values can be in an instruction, so instructions may be up to 3 bytes long. Inspiration was taken from
 the w65c02's ISA. The ISA is big-endian.
 ### Basic Specifications
-The ISA requires a 16 bit stack pointer register, a 16 bit program counter, an 8 bit status register, and
+The ISA requires an 8 bit stack pointer register, a 16 bit program counter, an 8 bit status register, and
 8 general-purpose 8 bit registers, as well as an accumulator. The address bus is 16 bits wide. Supported addressing modes
 include absolute, absolute indexed, zero page, and zero page indexed.  
+#### The Status Register
+The status register is an 8 bit register set by the result of instructions.  
+``czglen00`` represents the register, where `c` is carry, `z` is zero, `g` is greater than, `l` is less than, `e` is
+equal to, `n` is negative, and `0` is reserved.
 #### Reset Vector
 Upon reset, the CPU should load the values in memory locations 0xFFFE and 0xFFFF to see which address to jump to for the
 program to start. This is in absolute addressing mode.

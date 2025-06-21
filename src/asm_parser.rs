@@ -53,8 +53,9 @@ pub enum AddressMode {
 #[derive(Debug, PartialEq, Clone)]
 pub struct Address {
     pub address: Number,
-    pub offset: Option<Register>,
+    pub index: Option<Register>,
     pub mode: AddressMode,
+    pub pointer: Option<Pointer>,
 }
 impl Address {
     pub fn from_str(value: &str) -> Address {
@@ -62,10 +63,24 @@ impl Address {
         let address;
         let mut offset = None;
         let mode;
-        if value.contains("$") {
+        if value.contains('*') {
+            let pointer_name = value.splitn(2, '*').nth(1).unwrap()
+                .split_whitespace().nth(0).unwrap().trim_end_matches(',');
+            let modified_value = value.replace(&("*".to_string() + pointer_name), "0000");
+            let address_skeleton = Address::from_str(&modified_value);
+            return Address {
+                address: address_skeleton.address,
+                index: address_skeleton.index,
+                mode: address_skeleton.mode,
+                pointer: Some(Pointer {
+                    name: pointer_name.to_string(),
+                    address: None,
+                })
+            }
+        } else if value.contains('$') {
             // indexed
             address_value = value.split_whitespace().nth(0).unwrap()
-                .strip_prefix("$").unwrap().strip_suffix(",").unwrap();
+                .strip_prefix('$').unwrap().strip_suffix(',').unwrap();
             address = Number::from_str(address_value);
             
             let offset_value = value.split_whitespace().nth(1).unwrap();
@@ -75,9 +90,9 @@ impl Address {
             } else {
                 mode = AddressMode::Indexed;
             }
-        } else if value.contains("%") {
+        } else if value.contains('%') {
             // absolute
-            address_value = value.strip_prefix("%").unwrap();
+            address_value = value.strip_prefix('%').unwrap();
             address = Number::from_str(address_value);
             if address.size == NumberSize::EightBit {
                 mode = AddressMode::ZeroPage;
@@ -89,8 +104,9 @@ impl Address {
         }
         Address {
             address,
-            offset,
+            index: offset,
             mode,
+            pointer: None,
         }
     }
 }
@@ -115,7 +131,7 @@ impl NonZeroPageAddress {
             AddressMode::Indexed => {
                 NonZeroPageAddress {
                     address: address.address,
-                    offset: address.offset,
+                    offset: address.index,
                     mode: AddressMode::Indexed,
                 }
             },
@@ -215,7 +231,24 @@ pub struct Subroutine {
 #[derive(Debug, PartialEq, Clone)]
 pub struct Pointer {
     pub name: String,
-    pub address: Address
+    pub address: Option<PointerAddress>
+}
+// goofy hack to get around infinite size types
+#[derive(Debug, PartialEq, Clone)]
+pub struct PointerAddress {
+    pub address: Number,
+    pub mode: AddressMode,
+    pub index: Option<Register>
+}
+impl PointerAddress {
+    pub fn from_str(value: &str) -> PointerAddress {
+        let address = Address::from_str(value);
+        PointerAddress {
+            address: address.address,
+            mode: address.mode,
+            index: address.index
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -258,8 +291,7 @@ pub enum Instruction {
     PushProgramCounter,
     PopProgramCounter,
     IncrementProgramCounter,
-    Pointer(String, Address),
-    PointerUse(Pointer),
+    Pointer(String, PointerAddress),
 }
 
 pub fn postprocess(instructions: Vec<Instruction>, includes: Includes) -> Vec<Instruction> {
@@ -318,10 +350,10 @@ pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
         let parameter_str = line.split_once(" ").unwrap_or(("", "")).1;
 
         // pointer logic
-        // todo: add pointers into the address implementations and process them in the same step as subroutines
         if line.contains("#define") {
             // pointer creation
-            instructions.push(Instruction::Pointer( words[1].to_string(), Address::from_str(words[2])));
+            instructions.push(Instruction::Pointer( words[1].to_string(), PointerAddress::from_str(words[2])));
+            continue;
         }
         
         // normal instruction

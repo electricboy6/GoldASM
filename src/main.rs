@@ -1,5 +1,6 @@
 mod asm_parser;
 mod assembler;
+mod simulator;
 
 use clap::{arg, Command, Arg};
 
@@ -43,7 +44,7 @@ fn main() {
             
             let directory = target_file.rsplitn(2, '/').nth(1).unwrap().to_string() + "/";
             let filename = target_file.rsplitn(2, '/').nth(0).unwrap();
-            println!("INFO: Assembling file {filename} in directory {directory}");
+            println!("INFO: Assembling file \"{filename}\" in directory \"{}\"", directory.strip_suffix('/').unwrap_or(&directory));
             
             let parsed_values = asm_parser::parse(&directory, filename);
             
@@ -52,15 +53,16 @@ fn main() {
             let binary_instructions = assembler::assemble(instructions);
             
             assembler::write(&binary_instructions, directory, output_file);
-            //println!("Assembled Binary: {:02x?}", binary_instructions);
         },
         Some(("simulate", sub_matches)) => {
             match sub_matches.subcommand() {
                 Some(("asm", sub_matches)) => {
                     println!("Simulating assembly file {}", sub_matches.get_one::<String>("sourceFile").unwrap());
+                    todo!()
                 },
                 Some(("bin", sub_matches)) => {
                     println!("Simulating binary file {}", sub_matches.get_one::<String>("sourceFile").unwrap());
+                    simulator::run().unwrap();
                 },
                 _ => unreachable!("Subcommand is required")
             }

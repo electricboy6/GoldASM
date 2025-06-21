@@ -4,7 +4,7 @@ use crate::asm_parser::{AddressMode, Instruction};
 /*
 Assembling overview:
 pass 1: convert all subroutines, return from subroutines, and jump subroutines to just labels, jumps, and the stack
-pass 2: convert everything to binary with placeholder addresses for labels
+pass 2: convert everything to binary with placeholder addresses for labels and pointers
 pass 3: calculate all addresses
  */
 
@@ -20,6 +20,17 @@ struct AssemblerLabelUse {
     // INVARIANT: there MUST be a two byte area reserved in the vector for the label
     pub index: u16
 }
+#[derive(Clone, PartialEq, Debug)]
+struct AssemblerPointerUse {
+    pub pointer: asm_parser::Pointer,
+    // INVARIANT: there MUST be an area of the correct size reserved for the pointer's address
+    pub index: u16
+}
+#[derive(Clone, PartialEq, Debug)]
+struct AssemblerPointer {
+    pub name: String,
+    pub address: asm_parser::PointerAddress,
+}
 
 /**
 Replaces subroutines and rts's with their corresponding jumps and stack pushes/pops
@@ -28,7 +39,9 @@ pub fn preprocess(instructions: Vec<Instruction>) -> Vec<Instruction> {
     let original_instructions = instructions.clone();
     let mut resulting_instructions = Vec::with_capacity(original_instructions.len());
     for instruction in instructions {
+        // todo: ensure that the logic here is correct (I think it may not be with the program counter pushing)
         match instruction {
+            // add in the start of a subroutine
             Instruction::Subroutine(label) => {
                 resulting_instructions.push(Instruction::Jump(None, Some(
                     asm_parser::Label { name: label.clone() + "_EndSubroutine" }
@@ -36,12 +49,14 @@ pub fn preprocess(instructions: Vec<Instruction>) -> Vec<Instruction> {
                 resulting_instructions.push(Instruction::Label(label));
                 resulting_instructions.push(Instruction::PushProgramCounter);
             }
+            // add in the end of a subroutine
             Instruction::ReturnFromSubroutine(label) => {
                 resulting_instructions.push(Instruction::PopProgramCounter);
                 resulting_instructions.push(Instruction::IncrementProgramCounter);
                 // label is used to skip over subroutine, so we need it to be after the return code
                 resulting_instructions.push(Instruction::Label(label.name)); // postfix is automatically added for us
             }
+            // replace jump subroutine with jump
             Instruction::JumpSubroutine(address, label) => {
                 if let Some(label_value) = label {
                     resulting_instructions.push(Instruction::Jump(
@@ -58,6 +73,7 @@ pub fn preprocess(instructions: Vec<Instruction>) -> Vec<Instruction> {
 }
 
 pub fn assemble(instructions: Vec<Instruction>) -> Vec<u8> {
+    println!("INFO: Assembling combined files");
     // preprocess
     let processed_instructions = preprocess(instructions);
     // make the output vector
@@ -67,8 +83,14 @@ pub fn assemble(instructions: Vec<Instruction>) -> Vec<u8> {
     let mut labels = Vec::new();
     // make the vector of label usages
     let mut label_usages = Vec::new();
+    
+    // make the vector of pointers
+    let mut pointers = Vec::new();
+    // make the vector of pointer usages
+    let mut pointer_uses = Vec::new();
 
     // iterate through the instructions and insert as we go (assembler pass 2)
+    // this is long not because it is complicated, but because there are a lot of instructions to parse
     for instruction in processed_instructions {
         match instruction {
             Instruction::Noop => {
@@ -185,6 +207,14 @@ pub fn assemble(instructions: Vec<Instruction>) -> Vec<u8> {
             }
             Instruction::LoadAccumulator(address, immediate) => {
                 if let Some(address) = address {
+                    // address starts at the byte after the one byte opcode
+                    // need to do it before pushing the opcode so we don't have to decode the number size
+                    if let Some(pointer) = address.pointer {
+                        pointer_uses.push(AssemblerPointerUse {
+                            pointer,
+                            index: (binary_instructions.len() + 2) as u16
+                        });
+                    }
                     match address.mode {
                         AddressMode::Absolute => {
                             binary_instructions.push(0x23);
@@ -193,8 +223,8 @@ pub fn assemble(instructions: Vec<Instruction>) -> Vec<u8> {
                         AddressMode::Indexed => {
                             binary_instructions.push(0x24);
                             binary_instructions.append(&mut address.address.to_bytes());
-                            assert!(address.offset.is_some());
-                            binary_instructions.push(address.offset.unwrap().address)
+                            assert!(address.index.is_some());
+                            binary_instructions.push(address.index.unwrap().address)
                         }
                         AddressMode::ZeroPage => {
                             binary_instructions.push(0x25);
@@ -203,8 +233,8 @@ pub fn assemble(instructions: Vec<Instruction>) -> Vec<u8> {
                         AddressMode::ZeroPageIndexed => {
                             binary_instructions.push(0x26);
                             binary_instructions.append(&mut address.address.to_bytes());
-                            assert!(address.offset.is_some());
-                            binary_instructions.push(address.offset.unwrap().address)
+                            assert!(address.index.is_some());
+                            binary_instructions.push(address.index.unwrap().address)
                         }
                     }
                 } else {
@@ -213,6 +243,14 @@ pub fn assemble(instructions: Vec<Instruction>) -> Vec<u8> {
                 }
             }
             Instruction::StoreAccumulator(address) => {
+                // address starts at the byte after the one byte opcode
+                // need to do it before pushing the opcode so we don't have to decode the number size
+                if let Some(pointer) = address.pointer {
+                    pointer_uses.push(AssemblerPointerUse {
+                        pointer,
+                        index: (binary_instructions.len() + 2) as u16
+                    });
+                }
                 match address.mode {
                     AddressMode::Absolute => {
                         binary_instructions.push(0x28);
@@ -221,8 +259,8 @@ pub fn assemble(instructions: Vec<Instruction>) -> Vec<u8> {
                     AddressMode::Indexed => {
                         binary_instructions.push(0x29);
                         binary_instructions.append(&mut address.address.to_bytes());
-                        assert!(address.offset.is_some());
-                        binary_instructions.push(address.offset.unwrap().address)
+                        assert!(address.index.is_some());
+                        binary_instructions.push(address.index.unwrap().address)
                     }
                     AddressMode::ZeroPage => {
                         binary_instructions.push(0x2A);
@@ -231,8 +269,8 @@ pub fn assemble(instructions: Vec<Instruction>) -> Vec<u8> {
                     AddressMode::ZeroPageIndexed => {
                         binary_instructions.push(0x2B);
                         binary_instructions.append(&mut address.address.to_bytes());
-                        assert!(address.offset.is_some());
-                        binary_instructions.push(address.offset.unwrap().address)
+                        assert!(address.index.is_some());
+                        binary_instructions.push(address.index.unwrap().address)
                     }
                 }
             }
@@ -484,12 +522,6 @@ pub fn assemble(instructions: Vec<Instruction>) -> Vec<u8> {
                     binary_instructions.push(0x00);
                 }
             }
-            Instruction::Label(name) => {
-                labels.push(AssemblerLabel {
-                    name,
-                    index: binary_instructions.len() as u16
-                });
-            }
             Instruction::PushProgramCounter => {
                 binary_instructions.push(0x54);
             }
@@ -499,15 +531,28 @@ pub fn assemble(instructions: Vec<Instruction>) -> Vec<u8> {
             Instruction::IncrementProgramCounter => {
                 binary_instructions.push(0x56);
             }
-            _ => eprintln!("Unimplemented instruction! ({instruction:?})")
+            // ---------- assembler directives ----------
+            Instruction::Label(name) => {
+                labels.push(AssemblerLabel {
+                    name,
+                    index: binary_instructions.len() as u16
+                });
+            }
+            Instruction::Pointer(name, address) => {
+                pointers.push(AssemblerPointer {
+                    name,
+                    address,
+                });
+            }
+            _ => eprintln!("ERROR: Unimplemented instruction! ({instruction:?})")
         }
     }
     // make sure that even if there is a label at the end of the program, it won't crash
-    // only sacrifices a byte of space, so it's worth it
+    // even if we do hit it, it's just a noop
     binary_instructions.push(0x00);
 
     // compute addresses of all labels and replace labels with addresses
-    // pass 3 in assembling sequence
+    // part 1 of pass 3 in assembling sequence
     for label_use in label_usages {
         let mut target_label = &AssemblerLabel {
             name: "".to_string(),
@@ -519,10 +564,42 @@ pub fn assemble(instructions: Vec<Instruction>) -> Vec<u8> {
                 break;
             }
         }
-        assert_ne!(target_label.name, "".to_string());
+        if target_label.name == "" {
+            if label_use.name.ends_with("_EndSubroutine") {
+                // I totally didn't spend like half an hour trying to debug it when I just had the
+                // syntax wrong on subroutines in my test file and added this to make it easier to tell
+                panic!("Could not find label \"{}\"! Perhaps you forgot to return from a subroutine?", label_use.name);
+            }
+            panic!("Could not find label \"{}\"!", label_use.name);
+        }
         let label_address = target_label.index.to_be_bytes();
-        binary_instructions[(label_use.index + 0) as usize] = label_address[1];
+        binary_instructions[label_use.index as usize] = label_address[1];
         binary_instructions[(label_use.index - 1) as usize] = label_address[0];
+    }
+    // replace all pointer usages with the value of the pointer
+    // part 2 of pass 3 in assembling sequence
+    for pointer_use in pointer_uses {
+        let mut target_pointer = &AssemblerPointer{ name: "".to_string(), address: asm_parser::PointerAddress::from_str("%0000") };
+        for pointer in pointers.iter() {
+            if pointer.name == pointer_use.pointer.name {
+                target_pointer = pointer;
+                break;
+            }
+        }
+        if target_pointer.name == "" {
+            panic!("Could not find pointer \"{}\"!", pointer_use.pointer.name);
+        }
+        let pointer_address = target_pointer.address.address.to_bytes();
+        match target_pointer.address.address.size {
+            asm_parser::NumberSize::EightBit => {
+                binary_instructions[(pointer_use.index - 1) as usize] = pointer_address[0];
+                binary_instructions.remove(pointer_use.index as usize);
+            }
+            asm_parser::NumberSize::SixteenBit => {
+                binary_instructions[pointer_use.index as usize] = pointer_address[1];
+                binary_instructions[(pointer_use.index - 1) as usize] = pointer_address[0];
+            }
+        }
     }
 
 
@@ -538,6 +615,8 @@ pub fn write(binary: &Vec<u8>, directory: String, filename: &str) {
     if file.is_err() {
         eprintln!("WARNING: Unable to create file \"{filename}\" (removing file, trying again)");
         std::fs::remove_file(directory.clone() + filename).expect("Failed to remove existing target file!");
+        // if it's something else, the call stack will just fill up
+        // yes this is lazy error handling, what do you want me to do? this is still unfinished
         write(binary, directory, filename);
         return;
     }
