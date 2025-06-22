@@ -1,23 +1,29 @@
+use crate::simulator::bin_parser;
 use crate::simulator::bin_parser::{Address, Instruction};
 
 
 fn calculate_address(address: Address, cpu: &CPU) -> u16 {
     let real_address;
     if let Some(index) = address.index {
-        real_address = address.address.wrapping_add(cpu.registers[index] as u16);
+        real_address = address.address.wrapping_add(cpu.registers[index as usize] as u16);
     } else {
         real_address = address.address;
     }
     real_address
 }
-
+#[derive(Debug)]
 pub struct CPU {
     pub accumulator: u8,
     pub registers: [u8; 8],
     pub status_register: u8,
     pub stack_pointer: u8,
-    pub memory: [u8; 65536],
+    pub memory: [u8; 65535],
     pub program_counter: u16,
+}
+impl Default for CPU {
+    fn default() -> Self {
+        CPU::new(0x0200)
+    }
 }
 impl CPU {
     pub fn new(reset_vector: u16) -> CPU {
@@ -26,15 +32,26 @@ impl CPU {
             registers: [0; 8],
             status_register: 0b010000_00, // accumulator starts at zero, so zero flag is 1
             stack_pointer: 0x00,
-            memory: [0; 65536],
+            memory: [0; 65535],
             program_counter: 0x0000,
         };
         let reset_vector = reset_vector.to_be_bytes();
-        cpu.memory[0xFFFC] = reset_vector[1];
-        cpu.memory[0xFFFD] = reset_vector[0];
+        cpu.memory[0xFFFC] = reset_vector[0];
+        cpu.memory[0xFFFD] = reset_vector[1];
+        cpu.reset();
         cpu
     }
-    pub fn run_instruction(&mut self, instruction: Instruction) {
+    pub fn reset(&mut self) {
+        self.accumulator = 0;
+        self.registers = [0; 8];
+        self.status_register = 0b010000_00;
+        self.stack_pointer = 0x00;
+        let high_byte = self.memory[0xFFFC];
+        let low_byte = self.memory[0xFFFD];
+        self.program_counter = ((high_byte as u16) << 8) | (low_byte as u16);
+    }
+    pub fn step(&mut self) {
+        let (instruction, instruction_extra_bytes) = bin_parser::parse_instruction(self.memory, self.program_counter);
         match instruction {
             Instruction::Add(one_register, two_register) => {
                 if let Some(register) = one_register {
@@ -166,7 +183,7 @@ impl CPU {
             // todo: make carry in work as well as carry out
             Instruction::ShiftRight => {
                 let carry = self.accumulator & 0b0000_0001;
-                self.accumulator = self.accumulator << 1;
+                self.accumulator = self.accumulator >> 1;
                 if carry > 0 {
                     self.status_register = self.status_register | 0b100000_00;
                 } else {
@@ -175,7 +192,7 @@ impl CPU {
                 self.update_status_no_operands();
             }
             Instruction::ShiftLeft => {
-                let shifted_result = (self.accumulator as u16) >> 1;
+                let shifted_result = (self.accumulator as u16) << 1;
                 let carry = shifted_result & 0b0000_0001_0000_0000;
                 self.accumulator = (shifted_result & 0b0000_0000_1111_1111) as u8;
                 if carry > 0 {
@@ -193,12 +210,10 @@ impl CPU {
                 self.status_register = self.status_register & 0b011111_00
             }
             Instruction::PushRegisterToStack(register) => {
-                self.memory[self.stack_pointer as usize] = self.registers[register as usize];
-                self.stack_pointer = self.stack_pointer.wrapping_add(1);
+                self.push_stack(self.registers[register as usize]);
             }
             Instruction::PopRegisterFromStack(register) => {
-                self.registers[register as usize] = self.memory[self.stack_pointer as usize];
-                self.stack_pointer = self.stack_pointer.wrapping_sub(1);
+                self.registers[register as usize] = self.pop_stack();
             }
             Instruction::LoadAccumulator(address, immediate) => {
                 if let Some(address) = address {
@@ -219,66 +234,81 @@ impl CPU {
             Instruction::BranchCarrySet(address) => {
                 if self.status_register & 0b100000_00 == 1 {
                     self.program_counter = calculate_address(address, self);
+                    return;
                 }
             }
             Instruction::BranchCarryClear(address) => {
                 if self.status_register & 0b100000_00 == 0 {
                     self.program_counter = calculate_address(address, self);
+                    return;
                 }
             }
             Instruction::BranchNegative(address) => {
                 if self.status_register & 0b000001_00 == 1 {
                     self.program_counter = calculate_address(address, self);
+                    return;
                 }
             }
             Instruction::BranchPositive(address) => {
                 if self.status_register & 0b000001_00 == 0 {
                     self.program_counter = calculate_address(address, self);
+                    return;
                 }
             }
             Instruction::BranchEqual(register, address) => {
                 if self.registers[register as usize] == self.accumulator {
                     self.program_counter = calculate_address(address, self);
+                    return;
                 }
             }
             Instruction::BranchNotEqual(register, address) => {
                 if self.registers[register as usize] != self.accumulator {
                     self.program_counter = calculate_address(address, self);
+                    return;
                 }
             }
             Instruction::BranchZero(address) => {
                 if self.status_register & 0b010000_00 == 1 {
                     self.program_counter = calculate_address(address, self);
+                    return;
                 }
             }
             Instruction::BranchNotZero(address) => {
                 if self.status_register & 0b010000_00 == 0 {
                     self.program_counter = calculate_address(address, self);
+                    return;
                 }
             }
             Instruction::Jump(address) => {
                 self.program_counter = calculate_address(address, self);
+                return;
             }
             Instruction::PushProgramCounter => {
                 let program_counter = self.program_counter.to_be_bytes();
-                self.memory[self.stack_pointer as usize] = program_counter[1];
-                self.stack_pointer = self.stack_pointer.wrapping_add(1);
-                self.memory[self.stack_pointer as usize] = program_counter[0];
-                self.stack_pointer = self.stack_pointer.wrapping_add(1);
+                self.push_stack(program_counter[1]);
+                self.push_stack(program_counter[0]);
             }
             Instruction::PopProgramCounter => {
-                let program_counter_big = self.memory[self.stack_pointer as usize];
-                self.stack_pointer = self.stack_pointer.wrapping_sub(1);
-                let program_counter_small = self.memory[self.stack_pointer as usize];
-                self.stack_pointer = self.stack_pointer.wrapping_sub(1);
+                let program_counter_big = self.pop_stack();
+                let program_counter_small = self.pop_stack();
                 self.program_counter = (program_counter_big as u16) << 8 | (program_counter_small as u16);
             }
             Instruction::IncrementProgramCounter => {
                 self.program_counter = self.program_counter.wrapping_add(1);
             }
         }
-        self.program_counter = self.program_counter.wrapping_add(1);
+        self.program_counter = self.program_counter.wrapping_add(1 + instruction_extra_bytes as u16);
     }
+    fn push_stack(&mut self, value: u8) {
+        self.memory[(self.stack_pointer as u16 + 0x0100) as usize] = value;
+        self.stack_pointer = self.stack_pointer.wrapping_add(1);
+    }
+    fn pop_stack(&mut self) -> u8 {
+        let value = self.memory[(self.stack_pointer as u16 + 0x100) as usize];
+        self.stack_pointer = self.stack_pointer.wrapping_sub(1);
+        value
+    }
+    /// note: cannot update the carry, that must be done manually
     fn update_status_two_operands(&mut self, operand1: u8, operand2: u8) {
         if operand1 > operand2 {
             self.status_register = self.status_register | 0b001000_00;

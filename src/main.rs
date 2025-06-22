@@ -2,7 +2,7 @@ mod asm_parser;
 mod assembler;
 mod simulator;
 
-use clap::{arg, Command, Arg};
+use clap::{arg, Command, Arg, value_parser};
 
 fn main() {
     let matches = Command::new("GoldASM Assembler")
@@ -16,6 +16,7 @@ fn main() {
                 .about("Assemble the given file")
                 .arg(Arg::new("sourceFile").required(true))
                 .arg(arg!(-o --output [output]).default_value("program.bin"))
+                .arg(arg!(--size [size]).value_parser(value_parser!(u16)).default_value("65535"))
         )
         .subcommand(
             Command::new("simulate")
@@ -41,6 +42,8 @@ fn main() {
             let target_file = sub_matches.get_one::<String>("sourceFile").unwrap();
             // Safeness: output has a default value and will never be none
             let output_file = sub_matches.get_one::<String>("output").unwrap();
+            // Safeness: size has a default value and will never be none
+            let output_size = sub_matches.get_one::<u16>("size").unwrap();
             
             let directory = target_file.rsplitn(2, '/').nth(1).unwrap().to_string() + "/";
             let filename = target_file.rsplitn(2, '/').nth(0).unwrap();
@@ -50,7 +53,7 @@ fn main() {
             
             let instructions = asm_parser::postprocess(parsed_values.0, parsed_values.1);
             
-            let binary_instructions = assembler::assemble(instructions);
+            let binary_instructions = assembler::assemble(instructions, *output_size);
             
             assembler::write(&binary_instructions, directory, output_file);
         },
@@ -61,8 +64,11 @@ fn main() {
                     todo!()
                 },
                 Some(("bin", sub_matches)) => {
-                    println!("Simulating binary file {}", sub_matches.get_one::<String>("sourceFile").unwrap());
-                    simulator::run().unwrap();
+                    // Safeness: sourceFile is required so it will never be none
+                    let target_file = sub_matches.get_one::<String>("sourceFile").unwrap();
+                    
+                    println!("Simulating binary file {}", target_file);
+                    simulator::run(target_file.clone()).unwrap();
                 },
                 _ => unreachable!("Subcommand is required")
             }

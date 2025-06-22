@@ -1,4 +1,5 @@
 use std::io::Write;
+use crossterm::style::Stylize;
 use crate::asm_parser;
 use crate::asm_parser::{AddressMode, Instruction};
 /*
@@ -32,9 +33,9 @@ struct AssemblerPointer {
     pub address: asm_parser::PointerAddress,
 }
 
-/**
-Replaces subroutines and rts's with their corresponding jumps and stack pushes/pops
-*/
+
+/// Replaces subroutines and rts's with their corresponding jumps and stack pushes/pops
+// assembler pass 1
 pub fn preprocess(instructions: Vec<Instruction>) -> Vec<Instruction> {
     let original_instructions = instructions.clone();
     let mut resulting_instructions = Vec::with_capacity(original_instructions.len());
@@ -72,12 +73,12 @@ pub fn preprocess(instructions: Vec<Instruction>) -> Vec<Instruction> {
     resulting_instructions
 }
 
-pub fn assemble(instructions: Vec<Instruction>) -> Vec<u8> {
+pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
     println!("INFO: Assembling combined files");
     // preprocess
     let processed_instructions = preprocess(instructions);
     // make the output vector
-    let mut binary_instructions = Vec::with_capacity(processed_instructions.len());
+    let mut binary_instructions = Vec::with_capacity(size as usize);
 
     // make the vector of labels
     let mut labels = Vec::new();
@@ -88,6 +89,9 @@ pub fn assemble(instructions: Vec<Instruction>) -> Vec<u8> {
     let mut pointers = Vec::new();
     // make the vector of pointer usages
     let mut pointer_uses = Vec::new();
+    
+    // make the vector of origin starts
+    let mut origins = Vec::new();
 
     // iterate through the instructions and insert as we go (assembler pass 2)
     // this is long not because it is complicated, but because there are a lot of instructions to parse
@@ -544,7 +548,34 @@ pub fn assemble(instructions: Vec<Instruction>) -> Vec<u8> {
                     address,
                 });
             }
-            _ => eprintln!("ERROR: Unimplemented instruction! ({instruction:?})")
+            Instruction::Word(value) => {
+                binary_instructions.push(value.value.to_decimal() as u8);
+            }
+            Instruction::SetOrigin(address) => {
+                if let Some(address) = address {
+                    origins.push(binary_instructions.len() as u16);
+                    origins.push(address.address.to_decimal());
+                    let target_size = address.address.to_decimal();
+
+                    if binary_instructions.len() > target_size as usize {
+                        panic!("SetOrigin would cause overlapping instructions!");
+                    }
+                    while binary_instructions.len() < target_size as usize {
+                        binary_instructions.push(0x00);
+                    }
+                } else {
+                    assert!(origins.len() >= 2, "Attempted to resume at empty segment after first origin when no origins were set!");
+                    let start_point = origins[2];
+                    let mut end_point = binary_instructions.len() as u16;
+                    if let Some(max_end) = origins.get(3) {
+                        end_point = *max_end - 1;
+                    }
+                    println!("Inserting starting at {start_point} and ending at {end_point}");
+                    todo!("Need to make it so instructions get inserted starting at start_point and check end_point")
+                }
+
+            }
+            _ => eprintln!("{}", format!("ERROR: Unimplemented instruction! ({instruction:?})").red().bold())
         }
     }
     // make sure that even if there is a label at the end of the program, it won't crash
@@ -601,7 +632,13 @@ pub fn assemble(instructions: Vec<Instruction>) -> Vec<u8> {
             }
         }
     }
-
+    
+    if binary_instructions.len() > size as usize {
+        panic!("Could not fit file in target size!");
+    }
+    while binary_instructions.len() < size as usize {
+        binary_instructions.push(0x00);
+    }
 
     binary_instructions
 }
@@ -613,7 +650,7 @@ pub fn write(binary: &Vec<u8>, directory: String, filename: &str) {
         .open(directory.clone() + filename);
 
     if file.is_err() {
-        eprintln!("WARNING: Unable to create file \"{filename}\" (removing file, trying again)");
+        eprintln!("{}", format!("WARNING: Unable to create file \"{filename}\" (removing file, trying again)").yellow());
         std::fs::remove_file(directory.clone() + filename).expect("Failed to remove existing target file!");
         // if it's something else, the call stack will just fill up
         // yes this is lazy error handling, what do you want me to do? this is still unfinished

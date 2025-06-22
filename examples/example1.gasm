@@ -1,7 +1,7 @@
 #include dependency.gasm
 
 #define test_value_1 %1234
-
+.org %0200
 // init subroutine
 sr INIT:
     lda #0C
@@ -16,7 +16,7 @@ sr INIT:
     cpa 01
     lda #00
     cpa 00
-    lda #FF
+    lda #0F
     cpa 02
 TEST:
     add 00, 01
@@ -24,10 +24,18 @@ TEST:
     sta $10, 06
     sta $^00001010, 05
     bne 02, ~TEST
-    jmp %F00F
+    //jmp %F00F
 EXIT:
     rts INIT
     this isn't an instruction
 
 jsr ~INIT
 jmp ~dependency.RESET_VECTOR
+
+// reset vector
+.org %FFFC
+.word #02
+.word #00
+
+// includes start here
+.org

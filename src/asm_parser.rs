@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use ratatui::crossterm::style::Stylize;
 
 #[derive(Debug, PartialEq)]
 pub struct Includes {
@@ -292,6 +293,8 @@ pub enum Instruction {
     PopProgramCounter,
     IncrementProgramCounter,
     Pointer(String, PointerAddress),
+    SetOrigin(Option<Address>),
+    Word(Immediate),
 }
 
 pub fn postprocess(instructions: Vec<Instruction>, includes: Includes) -> Vec<Instruction> {
@@ -349,10 +352,29 @@ pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
         // defaults to empty strings so instructions with no parameters won't panic
         let parameter_str = line.split_once(" ").unwrap_or(("", "")).1;
 
-        // pointer logic
+        // pointer definition logic
         if line.contains("#define") {
             // pointer creation
             instructions.push(Instruction::Pointer( words[1].to_string(), PointerAddress::from_str(words[2])));
+            continue;
+        }
+        
+        // origin logic
+        // if no origin address set, continue at lowest unused address above the first .org
+        if line.contains(".org") {
+            if words.len() == 2 {
+                let address = Address::from_str(words[1]);
+                assert_eq!(address.mode, AddressMode::Absolute);
+                instructions.push(Instruction::SetOrigin(Some(address)));
+            } else {
+                instructions.push(Instruction::SetOrigin(None));
+            }
+            continue;
+        }
+        
+        // word logic
+        if line.contains(".word") {
+            instructions.push(Instruction::Word(Immediate::from_str(words[1])));
             continue;
         }
         
@@ -693,7 +715,7 @@ pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
             "//" => continue,
             "" => continue,
             _ => {
-                eprintln!("WARNING: While parsing {}, got line \"{line}\", which is not an instruction!", directory.to_string() + filename);
+                eprintln!("{}", format!("WARNING: While parsing \"{}\", got line \"{line}\", which is not an instruction!", directory.to_string() + filename).yellow());
             }
         }
     }
