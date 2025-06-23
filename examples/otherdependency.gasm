@@ -1,3 +1,5 @@
+#include dependency_test/thisisadependency.gasm
+
 sr OTHERDEPENDENCY:
     ror
     rts OTHERDEPENDENCY
