@@ -358,7 +358,7 @@ pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
             instructions.push(Instruction::Pointer( words[1].to_string(), PointerAddress::from_str(words[2])));
             continue;
         }
-        
+
         // origin logic
         // if no origin address set, continue at lowest unused address above the first .org
         if line.contains(".org") {
@@ -371,7 +371,7 @@ pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
             }
             continue;
         }
-        
+
         // word logic
         if line.contains(".word") {
             instructions.push(Instruction::Word(Immediate::from_str(words[1])));
