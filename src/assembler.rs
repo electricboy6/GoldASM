@@ -643,6 +643,18 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
     binary_instructions
 }
 
+fn insert(array: &mut [u8], value: u8, index: &mut usize) {
+    array[*index] = value;
+    *index += 1;
+}
+
+fn append(array: &mut [u8], values: &mut [u8], index: &mut usize) {
+    for value in values {
+        array[*index] = *value;
+        *index += 1;
+    }
+}
+
 pub fn write(binary: &Vec<u8>, directory: String, filename: &str) {
     let file = std::fs::OpenOptions::new()
         .write(true)
