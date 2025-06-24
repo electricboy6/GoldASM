@@ -74,11 +74,19 @@ pub fn preprocess(instructions: Vec<Instruction>) -> Vec<Instruction> {
 }
 
 pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
+    // todo: check to make sure that we aren't overwriting existing code
+    //       (fix and use the end point calculated in setorigin)
+    // also todo: make sure that the addresses that we put out are still correct even with all the
+    //            .orgs and everything
     println!("INFO: Assembling combined files");
     // preprocess
     let processed_instructions = preprocess(instructions);
     // make the output vector
     let mut binary_instructions = Vec::with_capacity(size as usize);
+    // plus 1 because len is 1 with one item, but addresses start at 0
+    while binary_instructions.len() < size as usize + 1 {
+        binary_instructions.push(0x00);
+    }
 
     // make the vector of labels
     let mut labels = Vec::new();
@@ -92,122 +100,125 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
     
     // make the vector of origin starts
     let mut origins = Vec::new();
+    
+    // point in memory where we insert
+    let mut target_address: usize = 0;
 
     // iterate through the instructions and insert as we go (assembler pass 2)
     // this is long not because it is complicated, but because there are a lot of instructions to parse
     for instruction in processed_instructions {
         match instruction {
             Instruction::Noop => {
-                binary_instructions.push(0x00);
+                insert(&mut binary_instructions, 0x00, &mut target_address);
             }
             Instruction::Add(register, tworegister) => {
                 if let Some(register) = register {
-                    binary_instructions.push(0x01);
-                    binary_instructions.push(register.address);
+                    insert(&mut binary_instructions, 0x01, &mut target_address);
+                    insert(&mut binary_instructions, register.address, &mut target_address);
                 } else if let Some(tworegister) = tworegister {
-                    binary_instructions.push(0x02);
-                    binary_instructions.push(tworegister.0.address);
-                    binary_instructions.push(tworegister.1.address);
+                    insert(&mut binary_instructions, 0x02, &mut target_address);
+                    insert(&mut binary_instructions, tworegister.0.address, &mut target_address);
+                    insert(&mut binary_instructions, tworegister.1.address, &mut target_address);
                 }
             }
             Instruction::Subtract(register, tworegister) => {
                 if let Some(register) = register {
-                    binary_instructions.push(0x03);
-                    binary_instructions.push(register.address);
+                    insert(&mut binary_instructions, 0x03, &mut target_address);
+                    insert(&mut binary_instructions, register.address, &mut target_address);
                 } else if let Some(tworegister) = tworegister {
-                    binary_instructions.push(0x04);
-                    binary_instructions.push(tworegister.0.address);
-                    binary_instructions.push(tworegister.1.address);
+                    insert(&mut binary_instructions, 0x04, &mut target_address);
+                    insert(&mut binary_instructions, tworegister.0.address, &mut target_address);
+                    insert(&mut binary_instructions, tworegister.1.address, &mut target_address);
                 }
             }
             Instruction::SetCarry => {
-                binary_instructions.push(0x05);
+                insert(&mut binary_instructions, 0x05, &mut target_address);
             }
             Instruction::ClearCarry => {
-                binary_instructions.push(0x06);
+                insert(&mut binary_instructions, 0x06, &mut target_address);
             }
             Instruction::Xor(register, tworegister) => {
                 if let Some(register) = register {
-                    binary_instructions.push(0x07);
-                    binary_instructions.push(register.address);
+                    insert(&mut binary_instructions, 0x07, &mut target_address);
+                    insert(&mut binary_instructions, register.address, &mut target_address);
                 } else if let Some(tworegister) = tworegister {
-                    binary_instructions.push(0x08);
-                    binary_instructions.push(tworegister.0.address);
-                    binary_instructions.push(tworegister.1.address);
+                    insert(&mut binary_instructions, 0x08, &mut target_address);
+                    insert(&mut binary_instructions, tworegister.0.address, &mut target_address);
+                    insert(&mut binary_instructions, tworegister.1.address, &mut target_address);
                 }
             }
             Instruction::Xnor(register, tworegister) => {
                 if let Some(register) = register {
-                    binary_instructions.push(0x09);
-                    binary_instructions.push(register.address);
+                    insert(&mut binary_instructions, 0x09, &mut target_address);
+                    insert(&mut binary_instructions, register.address, &mut target_address);
                 } else if let Some(tworegister) = tworegister {
-                    binary_instructions.push(0x0A);
-                    binary_instructions.push(tworegister.0.address);
-                    binary_instructions.push(tworegister.1.address);
+                    insert(&mut binary_instructions, 0x0A, &mut target_address);
+                    insert(&mut binary_instructions, tworegister.0.address, &mut target_address);
+                    insert(&mut binary_instructions, tworegister.1.address, &mut target_address);
                 }
             }
             Instruction::Or(register, tworegister) => {
                 if let Some(register) = register {
-                    binary_instructions.push(0x0B);
-                    binary_instructions.push(register.address);
+                    insert(&mut binary_instructions, 0x0B, &mut target_address);
+                    insert(&mut binary_instructions, register.address, &mut target_address);
                 } else if let Some(tworegister) = tworegister {
-                    binary_instructions.push(0x0C);
-                    binary_instructions.push(tworegister.0.address);
-                    binary_instructions.push(tworegister.1.address);
+                    insert(&mut binary_instructions, 0x0C, &mut target_address);
+                    insert(&mut binary_instructions, tworegister.0.address, &mut target_address);
+                    insert(&mut binary_instructions, tworegister.1.address, &mut target_address);
                 }
             }
             Instruction::Nor(register, tworegister) => {
                 if let Some(register) = register {
-                    binary_instructions.push(0x0D);
-                    binary_instructions.push(register.address);
+                    insert(&mut binary_instructions, 0x0D, &mut target_address);
+                    insert(&mut binary_instructions, register.address, &mut target_address);
                 } else if let Some(tworegister) = tworegister {
-                    binary_instructions.push(0x0E);
-                    binary_instructions.push(tworegister.0.address);
-                    binary_instructions.push(tworegister.1.address);
+                    insert(&mut binary_instructions, 0x0E, &mut target_address);
+                    insert(&mut binary_instructions, tworegister.0.address, &mut target_address);
+                    insert(&mut binary_instructions, tworegister.1.address, &mut target_address);
                 }
             }
             Instruction::And(register, tworegister) => {
                 if let Some(register) = register {
-                    binary_instructions.push(0x0F);
-                    binary_instructions.push(register.address);
+                    insert(&mut binary_instructions, 0x0F, &mut target_address);
+                    insert(&mut binary_instructions, register.address, &mut target_address);
                 } else if let Some(tworegister) = tworegister {
-                    binary_instructions.push(0x10);
-                    binary_instructions.push(tworegister.0.address);
-                    binary_instructions.push(tworegister.1.address);
+                    insert(&mut binary_instructions, 0x10, &mut target_address);
+                    insert(&mut binary_instructions, tworegister.0.address, &mut target_address);
+                    insert(&mut binary_instructions, tworegister.1.address, &mut target_address);
                 }
             }
             Instruction::Nand(register, tworegister) => {
                 if let Some(register) = register {
-                    binary_instructions.push(0x11);
-                    binary_instructions.push(register.address);
+                    insert(&mut binary_instructions, 0x11, &mut target_address);
+                    insert(&mut binary_instructions, register.address, &mut target_address);
                 } else if let Some(tworegister) = tworegister {
-                    binary_instructions.push(0x12);
-                    binary_instructions.push(tworegister.0.address);
-                    binary_instructions.push(tworegister.1.address);
+                    insert(&mut binary_instructions, 0x12, &mut target_address);
+                    insert(&mut binary_instructions, tworegister.0.address, &mut target_address);
+                    insert(&mut binary_instructions, tworegister.1.address, &mut target_address);
                 }
             }
             Instruction::Not => {
-                binary_instructions.push(0x13);
+                insert(&mut binary_instructions, 0x13, &mut target_address);
             }
             Instruction::RotateRight => {
-                binary_instructions.push(0x14);
+                insert(&mut binary_instructions, 0x14, &mut target_address);
             }
             Instruction::RotateLeft => {
-                binary_instructions.push(0x15);
+                insert(&mut binary_instructions, 0x15, &mut target_address);
             }
             Instruction::ShiftRight => {
-                binary_instructions.push(0x16);
+                insert(&mut binary_instructions, 0x16, &mut target_address);
             }
             Instruction::ShiftLeft => {
-                binary_instructions.push(0x17);
+                insert(&mut binary_instructions, 0x17, &mut target_address);
             }
             Instruction::PushRegister(register) => {
-                binary_instructions.push(0x21);
-                binary_instructions.push(register.address);
+                insert(&mut binary_instructions, 0x21, &mut target_address);
+                insert(&mut binary_instructions, register.address, &mut target_address);
             }
             Instruction::PopRegister(register) => {
-                binary_instructions.push(0x22);
-                binary_instructions.push(register.address);
+                insert(&mut binary_instructions, 0x22, &mut target_address);
+                insert(&mut binary_instructions, register.address, &mut target_address);
             }
             Instruction::LoadAccumulator(address, immediate) => {
                 if let Some(address) = address {
@@ -216,34 +227,34 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
                     if let Some(pointer) = address.pointer {
                         pointer_uses.push(AssemblerPointerUse {
                             pointer,
-                            index: (binary_instructions.len() + 2) as u16
+                            index: (target_address + 2) as u16
                         });
                     }
                     match address.mode {
                         AddressMode::Absolute => {
-                            binary_instructions.push(0x23);
-                            binary_instructions.append(&mut address.address.to_bytes());
+                            insert(&mut binary_instructions, 0x23, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                         }
                         AddressMode::Indexed => {
-                            binary_instructions.push(0x24);
-                            binary_instructions.append(&mut address.address.to_bytes());
+                            insert(&mut binary_instructions, 0x24, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                             assert!(address.index.is_some());
-                            binary_instructions.push(address.index.unwrap().address)
+                            insert(&mut binary_instructions, address.index.unwrap().address, &mut target_address)
                         }
                         AddressMode::ZeroPage => {
-                            binary_instructions.push(0x25);
-                            binary_instructions.append(&mut address.address.to_bytes());
+                            insert(&mut binary_instructions, 0x25, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                         }
                         AddressMode::ZeroPageIndexed => {
-                            binary_instructions.push(0x26);
-                            binary_instructions.append(&mut address.address.to_bytes());
+                            insert(&mut binary_instructions, 0x26, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                             assert!(address.index.is_some());
-                            binary_instructions.push(address.index.unwrap().address)
+                            insert(&mut binary_instructions, address.index.unwrap().address, &mut target_address);
                         }
                     }
                 } else {
-                    binary_instructions.push(0x27);
-                    binary_instructions.push(immediate.unwrap().value.to_bytes()[0])
+                    insert(&mut binary_instructions, 0x27, &mut target_address);
+                    insert(&mut binary_instructions, immediate.unwrap().value.to_bytes()[0], &mut target_address);
                 }
             }
             Instruction::StoreAccumulator(address) => {
@@ -252,294 +263,294 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
                 if let Some(pointer) = address.pointer {
                     pointer_uses.push(AssemblerPointerUse {
                         pointer,
-                        index: (binary_instructions.len() + 2) as u16
+                        index: (target_address + 2) as u16
                     });
                 }
                 match address.mode {
                     AddressMode::Absolute => {
-                        binary_instructions.push(0x28);
-                        binary_instructions.append(&mut address.address.to_bytes());
+                        insert(&mut binary_instructions, 0x28, &mut target_address);
+                        append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                     }
                     AddressMode::Indexed => {
-                        binary_instructions.push(0x29);
-                        binary_instructions.append(&mut address.address.to_bytes());
+                        insert(&mut binary_instructions, 0x29, &mut target_address);
+                        append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                         assert!(address.index.is_some());
-                        binary_instructions.push(address.index.unwrap().address)
+                        insert(&mut binary_instructions, address.index.unwrap().address, &mut target_address);
                     }
                     AddressMode::ZeroPage => {
-                        binary_instructions.push(0x2A);
-                        binary_instructions.append(&mut address.address.to_bytes());
+                        insert(&mut binary_instructions, 0x2A, &mut target_address);
+                        append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                     }
                     AddressMode::ZeroPageIndexed => {
-                        binary_instructions.push(0x2B);
-                        binary_instructions.append(&mut address.address.to_bytes());
+                        insert(&mut binary_instructions, 0x2B, &mut target_address);
+                        append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                         assert!(address.index.is_some());
-                        binary_instructions.push(address.index.unwrap().address)
+                        insert(&mut binary_instructions, address.index.unwrap().address, &mut target_address);
                     }
                 }
             }
             Instruction::CopyAccumulatorToRegister(register) => {
-                binary_instructions.push(0x2C);
-                binary_instructions.push(register.address);
+                insert(&mut binary_instructions, 0x2C, &mut target_address);
+                insert(&mut binary_instructions, register.address, &mut target_address);
             }
             Instruction::CopyRegisterToAccumulator(register) => {
-                binary_instructions.push(0x2D);
-                binary_instructions.push(register.address);
+                insert(&mut binary_instructions, 0x2D, &mut target_address);
+                insert(&mut binary_instructions, register.address, &mut target_address);
             }
             Instruction::BranchIfCarrySet(address, label) => {
                 if let Some(address) = address {
                     match address.mode {
                         AddressMode::Absolute => {
-                            binary_instructions.push(0x42);
-                            binary_instructions.append(&mut address.address.to_bytes());
+                            insert(&mut binary_instructions, 0x42, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                         }
                         AddressMode::Indexed => {
-                            binary_instructions.push(0x43);
-                            binary_instructions.append(&mut address.address.to_bytes());
+                            insert(&mut binary_instructions, 0x43, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                         }
                         _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
                     }
                 } else {
                     assert!(label.is_some());
                     // absolute address mode for labels
-                    binary_instructions.push(0x42);
+                    insert(&mut binary_instructions, 0x42, &mut target_address);
                     label_usages.push(AssemblerLabelUse {
                         name: label.unwrap().name,
-                        index: (binary_instructions.len() + 1) as u16
+                        index: (target_address + 1) as u16
                     });
                     // allocate space for the address to be replaced
-                    binary_instructions.push(0x00);
-                    binary_instructions.push(0x00);
+                    insert(&mut binary_instructions, 0x00, &mut target_address);
+                    insert(&mut binary_instructions, 0x00, &mut target_address);
                 }
             }
             Instruction::BranchIfCarryNotSet(address, label) => {
                 if let Some(address) = address {
                     match address.mode {
                         AddressMode::Absolute => {
-                            binary_instructions.push(0x44);
-                            binary_instructions.append(&mut address.address.to_bytes());
+                            insert(&mut binary_instructions, 0x44, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                         }
                         AddressMode::Indexed => {
-                            binary_instructions.push(0x45);
-                            binary_instructions.append(&mut address.address.to_bytes());
+                            insert(&mut binary_instructions, 0x45, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                         }
                         _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
                     }
                 } else {
                     assert!(label.is_some());
                     // absolute address mode for labels
-                    binary_instructions.push(0x44);
+                    insert(&mut binary_instructions, 0x44, &mut target_address);
                     label_usages.push(AssemblerLabelUse {
                         name: label.unwrap().name,
-                        index: (binary_instructions.len() + 1) as u16
+                        index: (target_address + 1) as u16
                     });
                     // allocate space for the address to be replaced
-                    binary_instructions.push(0x00);
-                    binary_instructions.push(0x00);
+                    insert(&mut binary_instructions, 0x00, &mut target_address);
+                    insert(&mut binary_instructions, 0x00, &mut target_address);
                 }
             }
             Instruction::BranchIfNegative(address, label) => {
                 if let Some(address) = address {
                     match address.mode {
                         AddressMode::Absolute => {
-                            binary_instructions.push(0x46);
-                            binary_instructions.append(&mut address.address.to_bytes());
+                            insert(&mut binary_instructions, 0x46, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                         }
                         AddressMode::Indexed => {
-                            binary_instructions.push(0x47);
-                            binary_instructions.append(&mut address.address.to_bytes());
+                            insert(&mut binary_instructions, 0x47, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                         }
                         _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
                     }
                 } else {
                     assert!(label.is_some());
                     // absolute address mode for labels
-                    binary_instructions.push(0x46);
+                    insert(&mut binary_instructions, 0x46, &mut target_address);
                     label_usages.push(AssemblerLabelUse {
                         name: label.unwrap().name,
-                        index: (binary_instructions.len() + 1) as u16
+                        index: (target_address + 1) as u16
                     });
                     // allocate space for the address to be replaced
-                    binary_instructions.push(0x00);
-                    binary_instructions.push(0x00);
+                    insert(&mut binary_instructions, 0x00, &mut target_address);
+                    insert(&mut binary_instructions, 0x00, &mut target_address);
                 }
             }
             Instruction::BranchIfPositive(address, label) => {
                 if let Some(address) = address {
                     match address.mode {
                         AddressMode::Absolute => {
-                            binary_instructions.push(0x48);
-                            binary_instructions.append(&mut address.address.to_bytes());
+                            insert(&mut binary_instructions, 0x48, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                         }
                         AddressMode::Indexed => {
-                            binary_instructions.push(0x49);
-                            binary_instructions.append(&mut address.address.to_bytes());
+                            insert(&mut binary_instructions, 0x49, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                         }
                         _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
                     }
                 } else {
                     assert!(label.is_some());
                     // absolute address mode for labels
-                    binary_instructions.push(0x48);
+                    insert(&mut binary_instructions, 0x48, &mut target_address);
                     label_usages.push(AssemblerLabelUse {
                         name: label.unwrap().name,
-                        index: (binary_instructions.len() + 1) as u16
+                        index: (target_address + 1) as u16
                     });
                     // allocate space for the address to be replaced
-                    binary_instructions.push(0x00);
-                    binary_instructions.push(0x00);
+                    insert(&mut binary_instructions, 0x00, &mut target_address);
+                    insert(&mut binary_instructions, 0x00, &mut target_address);
                 }
             }
             Instruction::BranchIfEqual(register, address, label) => {
                 if let Some(address) = address {
                     match address.mode {
                         AddressMode::Absolute => {
-                            binary_instructions.push(0x4A);
-                            binary_instructions.push(register.address);
-                            binary_instructions.append(&mut address.address.to_bytes());
+                            insert(&mut binary_instructions, 0x4A, &mut target_address);
+                            insert(&mut binary_instructions, register.address, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                         }
                         AddressMode::Indexed => {
-                            binary_instructions.push(0x4B);
-                            binary_instructions.push(register.address);
-                            binary_instructions.append(&mut address.address.to_bytes());
+                            insert(&mut binary_instructions, 0x4B, &mut target_address);
+                            insert(&mut binary_instructions, register.address, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                         }
                         _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
                     }
                 } else {
                     assert!(label.is_some());
                     // absolute address mode for labels
-                    binary_instructions.push(0x4A);
-                    binary_instructions.push(register.address);
+                    insert(&mut binary_instructions, 0x4A, &mut target_address);
+                    insert(&mut binary_instructions, register.address, &mut target_address);
                     label_usages.push(AssemblerLabelUse {
                         name: label.unwrap().name,
-                        index: (binary_instructions.len() + 1) as u16
+                        index: (target_address + 1) as u16
                     });
                     // allocate space for the address to be replaced
-                    binary_instructions.push(0x00);
-                    binary_instructions.push(0x00);
+                    insert(&mut binary_instructions, 0x00, &mut target_address);
+                    insert(&mut binary_instructions, 0x00, &mut target_address);
                 }
             }
             Instruction::BranchIfNotEqual(register, address, label) => {
                 if let Some(address) = address {
                     match address.mode {
                         AddressMode::Absolute => {
-                            binary_instructions.push(0x4C);
-                            binary_instructions.push(register.address);
-                            binary_instructions.append(&mut address.address.to_bytes());
+                            insert(&mut binary_instructions, 0x4C, &mut target_address);
+                            insert(&mut binary_instructions, register.address, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                         }
                         AddressMode::Indexed => {
-                            binary_instructions.push(0x4D);
-                            binary_instructions.push(register.address);
-                            binary_instructions.append(&mut address.address.to_bytes());
+                            insert(&mut binary_instructions, 0x4D, &mut target_address);
+                            insert(&mut binary_instructions, register.address, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                         }
                         _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
                     }
                 } else {
                     assert!(label.is_some());
                     // absolute address mode for labels
-                    binary_instructions.push(0x4C);
-                    binary_instructions.push(register.address);
+                    insert(&mut binary_instructions, 0x4C, &mut target_address);
+                    insert(&mut binary_instructions, register.address, &mut target_address);
                     label_usages.push(AssemblerLabelUse {
                         name: label.unwrap().name,
-                        index: (binary_instructions.len() + 1) as u16
+                        index: (target_address + 1) as u16
                     });
                     // allocate space for the address to be replaced
-                    binary_instructions.push(0x00);
-                    binary_instructions.push(0x00);
+                    insert(&mut binary_instructions, 0x00, &mut target_address);
+                    insert(&mut binary_instructions, 0x00, &mut target_address);
                 }
             }
             Instruction::BranchIfZero(address, label) => {
                 if let Some(address) = address {
                     match address.mode {
                         AddressMode::Absolute => {
-                            binary_instructions.push(0x4E);
-                            binary_instructions.append(&mut address.address.to_bytes());
+                            insert(&mut binary_instructions, 0x4E, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                         }
                         AddressMode::Indexed => {
-                            binary_instructions.push(0x4F);
-                            binary_instructions.append(&mut address.address.to_bytes());
+                            insert(&mut binary_instructions, 0x4F, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                         }
                         _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
                     }
                 } else {
                     assert!(label.is_some());
                     // absolute address mode for labels
-                    binary_instructions.push(0x4E);
+                    insert(&mut binary_instructions, 0x4E, &mut target_address);
                     label_usages.push(AssemblerLabelUse {
                         name: label.unwrap().name,
-                        index: (binary_instructions.len() + 1) as u16
+                        index: (target_address + 1) as u16
                     });
                     // allocate space for the address to be replaced
-                    binary_instructions.push(0x00);
-                    binary_instructions.push(0x00);
+                    insert(&mut binary_instructions, 0x00, &mut target_address);
+                    insert(&mut binary_instructions, 0x00, &mut target_address);
                 }
             }
             Instruction::BranchIfNotZero(address, label) => {
                 if let Some(address) = address {
                     match address.mode {
                         AddressMode::Absolute => {
-                            binary_instructions.push(0x50);
-                            binary_instructions.append(&mut address.address.to_bytes());
+                            insert(&mut binary_instructions, 0x50, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                         }
                         AddressMode::Indexed => {
-                            binary_instructions.push(0x51);
-                            binary_instructions.append(&mut address.address.to_bytes());
+                            insert(&mut binary_instructions, 0x51, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                         }
                         _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
                     }
                 } else {
                     assert!(label.is_some());
                     // absolute address mode for labels
-                    binary_instructions.push(0x50);
+                    insert(&mut binary_instructions, 0x50, &mut target_address);
                     label_usages.push(AssemblerLabelUse {
                         name: label.unwrap().name,
-                        index: (binary_instructions.len() + 1) as u16
+                        index: (target_address + 1) as u16
                     });
                     // allocate space for the address to be replaced
-                    binary_instructions.push(0x00);
-                    binary_instructions.push(0x00);
+                    insert(&mut binary_instructions, 0x00, &mut target_address);
+                    insert(&mut binary_instructions, 0x00, &mut target_address);
                 }
             }
             Instruction::Jump(address, label) => {
                 if let Some(address) = address {
                     match address.mode {
                         AddressMode::Absolute => {
-                            binary_instructions.push(0x52);
-                            binary_instructions.append(&mut address.address.to_bytes());
+                            insert(&mut binary_instructions, 0x52, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                         }
                         AddressMode::Indexed => {
-                            binary_instructions.push(0x53);
-                            binary_instructions.append(&mut address.address.to_bytes());
+                            insert(&mut binary_instructions, 0x53, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
                         }
                         _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
                     }
                 } else {
                     assert!(label.is_some());
                     // absolute address mode for labels
-                    binary_instructions.push(0x52);
+                    insert(&mut binary_instructions, 0x52, &mut target_address);
                     label_usages.push(AssemblerLabelUse {
                         name: label.unwrap().name,
-                        index: (binary_instructions.len() + 1) as u16
+                        index: (target_address + 1) as u16
                     });
                     // allocate space for the address to be replaced
-                    binary_instructions.push(0x00);
-                    binary_instructions.push(0x00);
+                    insert(&mut binary_instructions, 0x00, &mut target_address);
+                    insert(&mut binary_instructions, 0x00, &mut target_address);
                 }
             }
             Instruction::PushProgramCounter => {
-                binary_instructions.push(0x54);
+                insert(&mut binary_instructions, 0x54, &mut target_address);
             }
             Instruction::PopProgramCounter => {
-                binary_instructions.push(0x55);
+                insert(&mut binary_instructions, 0x55, &mut target_address);
             }
             Instruction::IncrementProgramCounter => {
-                binary_instructions.push(0x56);
+                insert(&mut binary_instructions, 0x56, &mut target_address);
             }
             // ---------- assembler directives ----------
             Instruction::Label(name) => {
                 labels.push(AssemblerLabel {
                     name,
-                    index: binary_instructions.len() as u16
+                    index: target_address as u16
                 });
             }
             Instruction::Pointer(name, address) => {
@@ -549,16 +560,18 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
                 });
             }
             Instruction::Word(value) => {
-                binary_instructions.push(value.value.to_decimal() as u8);
+                insert(&mut binary_instructions, value.value.to_decimal() as u8, &mut target_address);
             }
             Instruction::SetOrigin(address) => {
                 if let Some(address) = address {
-                    origins.push(binary_instructions.len() as u16);
+                    origins.push(target_address as u16);
                     origins.push(address.address.to_decimal());
                     let target_size = address.address.to_decimal();
+                    target_address = target_size as usize;
 
                     if binary_instructions.len() > target_size as usize {
-                        panic!("SetOrigin would cause overlapping instructions!");
+                        continue;
+                        //panic!("SetOrigin would cause overlapping instructions!");
                     }
                     while binary_instructions.len() < target_size as usize {
                         binary_instructions.push(0x00);
@@ -570,8 +583,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
                     if let Some(max_end) = origins.get(3) {
                         end_point = *max_end - 1;
                     }
-                    println!("Inserting starting at {start_point} and ending at {end_point}");
-                    todo!("Need to make it so instructions get inserted starting at start_point and check end_point")
+                    target_address = start_point as usize;
                 }
 
             }
@@ -580,7 +592,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
     }
     // make sure that even if there is a label at the end of the program, it won't crash
     // even if we do hit it, it's just a noop
-    binary_instructions.push(0x00);
+    // binary_instructions.push(0x00); // commented out because we have a target size to hit now
 
     // compute addresses of all labels and replace labels with addresses
     // part 1 of pass 3 in assembling sequence
@@ -633,11 +645,8 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
         }
     }
     
-    if binary_instructions.len() > size as usize {
+    if binary_instructions.len() > size as usize + 1 {
         panic!("Could not fit file in target size!");
-    }
-    while binary_instructions.len() < size as usize {
-        binary_instructions.push(0x00);
     }
 
     binary_instructions
