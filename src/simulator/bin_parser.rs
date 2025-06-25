@@ -68,7 +68,7 @@ pub enum Instruction {
 }
 
 /// returns the instruction, its parameters, and the number of additional bytes to skip (we automatically increment the program counter, so this is the number of bytes of parameters)
-pub fn parse_instruction(memory: [u8; 65535], program_counter: u16) -> (Instruction, u8) {
+pub fn parse_instruction(memory: [u8; 65536], program_counter: u16) -> (Instruction, u8) {
     let program_counter = program_counter as usize;
     match memory[program_counter] {
         0x00 => (Instruction::Noop, 0),
@@ -318,7 +318,7 @@ pub fn parse_instruction(memory: [u8; 65535], program_counter: u16) -> (Instruct
         0x55 => (Instruction::PopProgramCounter, 0),
         0x56 => (Instruction::IncrementProgramCounter, 0),
         _ => {
-            panic!("Found invalid byte while parsing at index {program_counter}! ({:x})\n This means that we're probably off by some value, so don't trust the results.", memory[program_counter]);
+            panic!("Found invalid byte while parsing at index {program_counter}! ({:02x?})\n This means that we're probably off by some value, so don't trust the results.", &memory[program_counter-2..program_counter+2]);
         }
     }
 }

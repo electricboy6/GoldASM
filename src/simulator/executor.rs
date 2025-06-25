@@ -17,27 +17,24 @@ pub struct CPU {
     pub registers: [u8; 8],
     pub status_register: u8,
     pub stack_pointer: u8,
-    pub memory: [u8; 65535],
+    pub memory: [u8; 65536],
     pub program_counter: u16,
 }
 impl Default for CPU {
     fn default() -> Self {
-        CPU::new(0x0200)
+        CPU::new()
     }
 }
 impl CPU {
-    pub fn new(reset_vector: u16) -> CPU {
+    pub fn new() -> CPU {
         let mut cpu = CPU {
             accumulator: 0,
             registers: [0; 8],
             status_register: 0b010000_00, // accumulator starts at zero, so zero flag is 1
             stack_pointer: 0x00,
-            memory: [0; 65535],
+            memory: [0; 65536],
             program_counter: 0x0000,
         };
-        let reset_vector = reset_vector.to_be_bytes();
-        cpu.memory[0xFFFC] = reset_vector[0];
-        cpu.memory[0xFFFD] = reset_vector[1];
         cpu.reset();
         cpu
     }

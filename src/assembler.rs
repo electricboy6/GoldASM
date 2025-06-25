@@ -40,7 +40,7 @@ pub fn preprocess(instructions: Vec<Instruction>) -> Vec<Instruction> {
     let original_instructions = instructions.clone();
     let mut resulting_instructions = Vec::with_capacity(original_instructions.len());
     for instruction in instructions {
-        // todo: ensure that the logic here is correct (I think it may not be with the program counter pushing)
+        // todo: yeah this logic is borked and we need to fix it now (either that or the simulator is borked, which is also likely)
         match instruction {
             // add in the start of a subroutine
             Instruction::Subroutine(label) => {
@@ -48,17 +48,18 @@ pub fn preprocess(instructions: Vec<Instruction>) -> Vec<Instruction> {
                     asm_parser::Label { name: label.clone() + "_EndSubroutine" }
                 )));
                 resulting_instructions.push(Instruction::Label(label));
-                resulting_instructions.push(Instruction::PushProgramCounter);
+                //resulting_instructions.push(Instruction::PushProgramCounter);
             }
             // add in the end of a subroutine
             Instruction::ReturnFromSubroutine(label) => {
                 resulting_instructions.push(Instruction::PopProgramCounter);
-                resulting_instructions.push(Instruction::IncrementProgramCounter);
+                //resulting_instructions.push(Instruction::IncrementProgramCounter);
                 // label is used to skip over subroutine, so we need it to be after the return code
                 resulting_instructions.push(Instruction::Label(label.name)); // postfix is automatically added for us
             }
             // replace jump subroutine with jump
             Instruction::JumpSubroutine(address, label) => {
+                resulting_instructions.push(Instruction::PushProgramCounter);
                 if let Some(label_value) = label {
                     resulting_instructions.push(Instruction::Jump(
                         address, Some(asm_parser::Label { name: label_value.name })
