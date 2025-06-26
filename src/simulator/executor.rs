@@ -84,11 +84,11 @@ impl CPU {
                 let current_carry = (self.status_register & 0b100000_00).min(1) as u16;
                 let acc_value = self.accumulator as u16 | (current_carry << 9);
                 if let Some(register) = one_register {
-                    let (result, carry) = self.accumulator
+                    let (result, carry_out) = self.accumulator
                         .overflowing_sub(self.registers[register as usize]);
                     self.accumulator = result;
                     
-                    if carry {
+                    if carry_out {
                         self.status_register = self.status_register | 0b100000_00
                     } else {
                         self.status_register = self.status_register & 0b011111_00
@@ -99,10 +99,10 @@ impl CPU {
                     let register1_value = self.registers[register1 as usize];
                     let register2_value = self.registers[register2 as usize];
                     
-                    let (result, carry) = register1_value.overflowing_sub(register2_value);
+                    let (result, carry_out) = register1_value.overflowing_sub(register2_value);
                     self.accumulator = result;
                     
-                    if carry {
+                    if carry_out {
                         self.status_register = self.status_register | 0b100000_00
                     } else {
                         self.status_register = self.status_register & 0b011111_00
@@ -177,26 +177,39 @@ impl CPU {
                 self.accumulator = self.accumulator.rotate_left(1);
                 self.update_status_no_operands();
             }
-            // todo: make carry in work as well as carry out
             Instruction::ShiftRight => {
-                let carry = self.accumulator & 0b0000_0001;
+                let carry_out = self.accumulator & 0b0000_0001;
+                let carry_in = self.status_register & 0b100000_00;
+                
                 self.accumulator = self.accumulator >> 1;
-                if carry > 0 {
+                if carry_in > 1 {
+                    self.accumulator = self.accumulator | 0b1000_0000;
+                }
+                
+                if carry_out > 0 {
                     self.status_register = self.status_register | 0b100000_00;
                 } else {
                     self.status_register = self.status_register & 0b011111_00;
                 }
+                
                 self.update_status_no_operands();
             }
             Instruction::ShiftLeft => {
+                let carry_in = self.status_register & 0b100000_00;
                 let shifted_result = (self.accumulator as u16) << 1;
-                let carry = shifted_result & 0b0000_0001_0000_0000;
+                let carry_out = shifted_result & 0b0000_0001_0000_0000;
+                
                 self.accumulator = (shifted_result & 0b0000_0000_1111_1111) as u8;
-                if carry > 0 {
+                if carry_in > 0 {
+                    self.accumulator = self.accumulator | 0b0000_0001;
+                }
+                
+                if carry_out > 0 {
                     self.status_register = self.status_register | 0b100000_00;
                 } else {
                     self.status_register = self.status_register & 0b011111_00;
                 }
+                
                 self.update_status_no_operands();
             }
             Instruction::Noop => {}
@@ -293,6 +306,11 @@ impl CPU {
             Instruction::IncrementProgramCounter => {
                 self.program_counter = self.program_counter.wrapping_add(1);
             }
+            Instruction::PopProgramCounterSubroutine => {
+                let program_counter_big = self.pop_stack();
+                let program_counter_small = self.pop_stack();
+                self.program_counter = ((program_counter_big as u16) << 8 | (program_counter_small as u16)) + 3;
+            }
         }
         self.program_counter = self.program_counter.wrapping_add(1 + instruction_extra_bytes as u16);
     }
@@ -301,8 +319,8 @@ impl CPU {
         self.stack_pointer = self.stack_pointer.wrapping_add(1);
     }
     fn pop_stack(&mut self) -> u8 {
-        let value = self.memory[(self.stack_pointer as u16 + 0x100) as usize];
         self.stack_pointer = self.stack_pointer.wrapping_sub(1);
+        let value = self.memory[(self.stack_pointer as u16 + 0x0100) as usize];
         value
     }
     /// note: cannot update the carry, that must be done manually

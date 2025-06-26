@@ -124,6 +124,8 @@ Opcodes ``0x42``-``0x62`` have been reserved for flow control.
 ``0x54``, ``0x55``
 #### INCPC
 ``0x56``
+#### PLPCSR
+``0x57``
 ### Other operations
 Other operations besides the ones described should reset the CPU. The instruction ``FF`` is never valid and must reset
 the CPU.

@@ -1,13 +1,19 @@
 .org %0200
-.word #00
+
+// here to make sure that 
+sr TEST:
+    noop
+    rts TEST
 
 lda #0F
 jsr ~DELAY
+// program is over, loop forever
+jmp ~LOOP
 
-.org %FFFC
-.word #02
-.word #00
-.org
+
+
+// go back to the end of the program
+.org %0400
 // busy loops for however many iterations the accumulator has in it
 sr DELAY:
     cpa 02
@@ -15,8 +21,18 @@ sr DELAY:
     cpa 00
     lda #01
     cpa 01
-    LOOP:
+    DELAYLOOP:
         add 00, 01
         cpa 00
-        bne 02, ~LOOP
+        bne 02, ~DELAYLOOP
     rts DELAY
+
+// reset vector
+.org %FFFC
+.word #02
+.word #00
+
+// program is over, just loop forever
+.org %FFF9
+LOOP:
+    jmp ~LOOP

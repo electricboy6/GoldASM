@@ -295,6 +295,7 @@ pub enum Instruction {
     Pointer(String, PointerAddress),
     SetOrigin(Option<Address>),
     Word(Immediate),
+    PopProgramCounterSubroutine,
 }
 
 pub fn postprocess(instructions: Vec<Instruction>, includes: Includes) -> Vec<Instruction> {
@@ -333,15 +334,33 @@ pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
         if line.contains(':') {
             if line.contains("sr") {
                 // this is a subroutine
+                let target_name = module_name_dot.to_string() + line.strip_suffix(':')
+                    .unwrap().strip_prefix("sr").unwrap().trim();
+                
+                if instructions.contains(&Instruction::Label(target_name.clone())) {
+                    panic!("Subroutine already exists as a label! ({target_name})");
+                }
+                if instructions.contains(&Instruction::Subroutine(target_name.clone())) {
+                    panic!("Subroutine already exists! ({target_name})");
+                }
+                
                 instructions.push(Instruction::Subroutine(
-                    module_name_dot.to_string() + line.strip_suffix(':').unwrap()
-                        .strip_prefix("sr").unwrap().trim()
+                    target_name
                 ));
                 continue;
             }
             // this is a label
+            let target_name = module_name_dot.to_string() + line.strip_suffix(':').unwrap();
+            
+            if instructions.contains(&Instruction::Label(target_name.clone())) {
+                panic!("Label already exists! ({target_name})");
+            }
+            if instructions.contains(&Instruction::Subroutine(target_name.clone())) {
+                panic!("Label already exists as a subroutine! ({target_name})");
+            }
+            
             instructions.push(Instruction::Label(
-                module_name_dot.to_string() + line.strip_suffix(':').unwrap()
+                target_name
             ));
             continue;
         }

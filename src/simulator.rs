@@ -20,7 +20,6 @@ use ratatui::{
     },
     DefaultTerminal, Frame,
 };
-use ratatui::style::Style;
 use crate::simulator::executor::CPU;
 
 #[derive(Debug, Default)]
@@ -48,16 +47,25 @@ impl App {
     }
 
     fn draw(&mut self, frame: &mut Frame) {
-        // todo: nest the memory blocks in the status blocks or something like that
+        // if auto run, then execute a step
         if self.auto_run {
             self.step();
         }
+        
+        // update memory lists
+        *self.instruction_state.offset_mut() = 16 - 5;
+        self.instruction_state.select(Some(16));
+
+        *self.stack_state.offset_mut() = (self.cpu.stack_pointer as usize).saturating_sub(5);
+        self.stack_state.select(Some(self.cpu.stack_pointer as usize));
+        
+        // create outer box
         let title = Line::from(" GoldISA Simulator ".bold());
         let instructions = Line::from(vec![
-            //" Decrement ".into(),
-            //"<Left>".blue().bold(),
-            " Auto run ".into(),
+            " Start Auto Run ".into(),
             "<Up>".blue().bold(),
+            " Stop Auto Run ".into(),
+            "<Down>".blue().bold(),
             " Reset ".into(),
             "<Space>".blue().bold(),
             " Step ".into(),
@@ -69,39 +77,47 @@ impl App {
             .title(title.centered())
             .title_bottom(instructions.centered())
             .border_set(border::THICK);
-        //frame.render_widget(outer_block, frame.area());
+        
+        // make layout of stuff
         let [status_area, instruction_area, stack_area] =
-            Layout::horizontal([Constraint::Fill(6), Constraint::Fill(2), Constraint::Fill(2)]).areas(frame.area());
-        let instructions = self.cpu.memory[self.cpu.program_counter.saturating_sub(128) as usize..(self.cpu.program_counter.saturating_add(128)) as usize]
+            Layout::horizontal([Constraint::Fill(6), Constraint::Fill(2), Constraint::Fill(2)]).areas(outer_block.inner(frame.area()));
+        
+        // instructions list
+        // todo: live disassembly
+        let instructions = self.cpu.memory[self.cpu.program_counter.saturating_sub(16) as usize..(self.cpu.program_counter.saturating_add(16)) as usize]
             .to_vec();
-        let memory_strings: Vec<String> = instructions.iter().map(|item| -> String {
-            format!("0x{:02x?}", item)
+        let memory_strings: Vec<Span> = instructions.iter().map(|item| -> Span {
+            format!("0x{:02x?}", item).yellow()
         }).collect();
         
         let memory_list = List::new(memory_strings)
             .block(Block::bordered().title("Memory"))
-            .highlight_style(Style::new().reversed())
             .highlight_symbol("-> ")
+            .scroll_padding(128)
             .repeat_highlight_symbol(false);
         
+        // stack list
+        // todo: figure out why the heck the stack sometimes just doesn't show the entire thing
+        //       also maybe show addresses in memory and stack
         let stack = self.cpu.memory[0x0100..0x0200].to_vec();
-        let stack_strings: Vec<String> = stack.iter().map(|item| -> String {
-            format!("0x{:02x?}", item)
+        let stack_strings: Vec<Span> = stack.iter().map(|item| -> Span {
+            format!("0x{:02x?}", item).yellow()
         }).collect();
         let stack_list = List::new(stack_strings)
             .block(Block::bordered().title("Stack"))
-            .highlight_style(Style::new().reversed())
             .highlight_symbol("-> ")
             .repeat_highlight_symbol(false);
         
-        
+        // render everything
+        frame.render_widget(outer_block, frame.area());
         frame.render_stateful_widget(memory_list, instruction_area, &mut self.instruction_state);
         frame.render_stateful_widget(stack_list, stack_area, &mut self.stack_state);
         frame.render_widget(self, status_area);
     }
 
     fn handle_events(&mut self) -> io::Result<()> {
-        if event::poll(Duration::from_millis(50))? {
+        // 10hz update rate
+        if event::poll(Duration::from_millis(100))? {
             match event::read()? {
                 // events are registered on press and release
                 Event::Key(key_event) if key_event.is_press() => {
@@ -116,6 +132,9 @@ impl App {
     }
 
     fn handle_key_event(&mut self, key_event: KeyEvent) {
+        if !key_event.is_press() {
+            return;
+        }
         match key_event.code {
             KeyCode::Char(' ') => self.reset(),
             KeyCode::Char('q') => self.exit(),
@@ -125,6 +144,7 @@ impl App {
             KeyCode::Right => self.step(),
             // up arrow
             KeyCode::Up => self.auto_run = true,
+            KeyCode::Down => self.auto_run = false,
             _ => {}
         }
     }
@@ -134,12 +154,6 @@ impl App {
     }
     fn step(&mut self) {
         self.cpu.step();
-        
-        *self.instruction_state.offset_mut() = (self.cpu.program_counter as usize).saturating_sub(5);
-        self.instruction_state.select(Some(self.cpu.program_counter as usize));
-        
-        *self.stack_state.offset_mut() = (self.cpu.stack_pointer as usize).saturating_sub(5);
-        self.stack_state.select(Some(self.cpu.stack_pointer as usize));
     }
     fn reset(&mut self) {
         self.cpu = CPU::default();
@@ -152,45 +166,25 @@ impl App {
 }
 impl Widget for &mut App {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let title = Line::from(" GoldISA Simulator ".bold());
-        let instructions = Line::from(vec![
-            //" Decrement ".into(),
-            //"<Left>".blue().bold(),
-            " Auto run ".into(),
-            "<Up>".blue().bold(),
-            " Reset ".into(),
-            "<Space>".blue().bold(),
-            " Step ".into(),
-            "<Right>".blue().bold(),
-            " Quit ".into(),
-            "<Q> ".blue().bold(),
-        ]);
+        let title = Line::from(" CPU State ");
         let block = Block::bordered()
-            .title(title.centered())
-            .title_bottom(instructions.centered())
-            .border_set(border::THICK);
+            .title(title);
 
         let status_text = Text::from(vec![Line::from(vec![
             "Accumulator: ".into(),
-            format!("{:02x} ", self.cpu.accumulator).to_string().yellow(),
+            format!("{:02x} ", self.cpu.accumulator).to_string().yellow(),]), Line::from(vec![
             "Registers: ".into(),
-            format!("{:02x?} ", self.cpu.registers).to_string().yellow(),
+            format!("{:02x?} ", self.cpu.registers).to_string().yellow(),]), Line::from(vec![
+            // todo: pretty print the status register
             "Status register: ".into(),
-            format!("{:08b} ", self.cpu.status_register).to_string().yellow(),
+            format!("{:08b} ", self.cpu.status_register).to_string().yellow(),]), Line::from(vec![
             "Program counter: ".into(),
-            format!("{:04x} ", self.cpu.program_counter).to_string().yellow(),
-            "Instruction values: ".into(),
-            format!(
-                "[{:02x}, {:02x}, {:02x}, {:02x}]",
-                self.cpu.memory[self.cpu.program_counter as usize],
-                self.cpu.memory[self.cpu.program_counter as usize + 1],
-                self.cpu.memory[self.cpu.program_counter as usize + 2],
-                self.cpu.memory[self.cpu.program_counter as usize + 3],
-            ).to_string().yellow(),
-        ])]);
+            format!("{:04x} ", self.cpu.program_counter).to_string().yellow(),]), Line::from(vec![
+            "Stack pointer: ".into(),
+            format!("{:02x} ", self.cpu.stack_pointer).to_string().yellow(),]),
+        ]);
 
         Paragraph::new(status_text)
-            .centered()
             .block(block)
             .render(area, buf);
     }
@@ -201,8 +195,4 @@ pub fn run(source_file: String) -> io::Result<()> {
     let app_result = App::default().run(&mut terminal, source_file);
     ratatui::restore();
     app_result
-}
-
-fn render_list(area: Rect, buf: &mut Buffer, list: List, list_state: &mut ListState) {
-    StatefulWidget::render(list, area, buf, list_state);
 }

@@ -40,7 +40,6 @@ pub fn preprocess(instructions: Vec<Instruction>) -> Vec<Instruction> {
     let original_instructions = instructions.clone();
     let mut resulting_instructions = Vec::with_capacity(original_instructions.len());
     for instruction in instructions {
-        // todo: yeah this logic is borked and we need to fix it now (either that or the simulator is borked, which is also likely)
         match instruction {
             // add in the start of a subroutine
             Instruction::Subroutine(label) => {
@@ -48,12 +47,10 @@ pub fn preprocess(instructions: Vec<Instruction>) -> Vec<Instruction> {
                     asm_parser::Label { name: label.clone() + "_EndSubroutine" }
                 )));
                 resulting_instructions.push(Instruction::Label(label));
-                //resulting_instructions.push(Instruction::PushProgramCounter);
             }
             // add in the end of a subroutine
             Instruction::ReturnFromSubroutine(label) => {
-                resulting_instructions.push(Instruction::PopProgramCounter);
-                //resulting_instructions.push(Instruction::IncrementProgramCounter);
+                resulting_instructions.push(Instruction::PopProgramCounterSubroutine);
                 // label is used to skip over subroutine, so we need it to be after the return code
                 resulting_instructions.push(Instruction::Label(label.name)); // postfix is automatically added for us
             }
@@ -75,10 +72,6 @@ pub fn preprocess(instructions: Vec<Instruction>) -> Vec<Instruction> {
 }
 
 pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
-    // todo: check to make sure that we aren't overwriting existing code
-    //       (fix and use the end point calculated in setorigin)
-    // also todo: make sure that the addresses that we put out are still correct even with all the
-    //            .orgs and everything
     println!("INFO: Assembling combined files");
     // preprocess
     let processed_instructions = preprocess(instructions);
@@ -104,6 +97,8 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
     
     // point in memory where we insert
     let mut target_address: usize = 0;
+    // max point in memory where we can insert
+    let mut max_address: usize = size as usize;
 
     // iterate through the instructions and insert as we go (assembler pass 2)
     // this is long not because it is complicated, but because there are a lot of instructions to parse
@@ -547,6 +542,9 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
             Instruction::IncrementProgramCounter => {
                 insert(&mut binary_instructions, 0x56, &mut target_address);
             }
+            Instruction::PopProgramCounterSubroutine => {
+                insert(&mut binary_instructions, 0x57, &mut target_address);
+            }
             // ---------- assembler directives ----------
             Instruction::Label(name) => {
                 labels.push(AssemblerLabel {
@@ -565,18 +563,11 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
             }
             Instruction::SetOrigin(address) => {
                 if let Some(address) = address {
+                    // todo: check if things overlap in this code path as well as in the parameterless .org
                     origins.push(target_address as u16);
                     origins.push(address.address.to_decimal());
                     let target_size = address.address.to_decimal();
                     target_address = target_size as usize;
-
-                    if binary_instructions.len() > target_size as usize {
-                        continue;
-                        //panic!("SetOrigin would cause overlapping instructions!");
-                    }
-                    while binary_instructions.len() < target_size as usize {
-                        binary_instructions.push(0x00);
-                    }
                 } else {
                     assert!(origins.len() >= 2, "Attempted to resume at empty segment after first origin when no origins were set!");
                     let start_point = origins[2];
@@ -585,15 +576,15 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
                         end_point = *max_end - 1;
                     }
                     target_address = start_point as usize;
+                    max_address = end_point as usize;
                 }
-
             }
             _ => eprintln!("{}", format!("ERROR: Unimplemented instruction! ({instruction:?})").red().bold())
         }
+        if target_address > max_address {
+            panic!("Tried to overwrite code inside the binary (check your .orgs)!");
+        }
     }
-    // make sure that even if there is a label at the end of the program, it won't crash
-    // even if we do hit it, it's just a noop
-    // binary_instructions.push(0x00); // commented out because we have a target size to hit now
 
     // compute addresses of all labels and replace labels with addresses
     // part 1 of pass 3 in assembling sequence
