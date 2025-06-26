@@ -569,7 +569,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
                     let target_size = address.address.to_decimal();
                     target_address = target_size as usize;
                 } else {
-                    assert!(origins.len() >= 2, "Attempted to resume at empty segment after first origin when no origins were set!");
+                    assert!(origins.len() > 2, "Attempted to resume at empty segment after first origin when less than 2 origins were set!");
                     let start_point = origins[2];
                     let mut end_point = binary_instructions.len() as u16;
                     if let Some(max_end) = origins.get(3) {

@@ -1,19 +1,15 @@
 .org %0200
 
-// here to make sure that 
+// here to make sure that subroutine logic is correct
 sr TEST:
     noop
     rts TEST
 
-lda #0F
+lda #20
 jsr ~DELAY
 // program is over, loop forever
 jmp ~LOOP
 
-
-
-// go back to the end of the program
-.org %0400
 // busy loops for however many iterations the accumulator has in it
 sr DELAY:
     cpa 02
@@ -33,6 +29,7 @@ sr DELAY:
 .word #00
 
 // program is over, just loop forever
-.org %FFF9
+.org %FFF8
 LOOP:
+    noop // here so we can see the program counter changing so it's clear that the cpu isn't frozen
     jmp ~LOOP

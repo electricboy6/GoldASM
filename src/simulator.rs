@@ -164,20 +164,49 @@ impl App {
         self.cpu.reset();
     }
 }
+
+fn push_to_string(string: &mut String, value_to_add: &str) {
+    if string.len() > 0 {
+        string.push_str(&(", ".to_string() + value_to_add));
+    } else {
+        string.push_str(value_to_add);
+    }
+}
+
 impl Widget for &mut App {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let title = Line::from(" CPU State ");
         let block = Block::bordered()
             .title(title);
+        
+        let mut status_register_text = String::new();
+        if self.cpu.status_register & 0b100000_00 > 1 {
+            push_to_string(&mut status_register_text, "carry");
+        }
+        if self.cpu.status_register & 0b010000_00 > 1 {
+            push_to_string(&mut status_register_text, "zero");
+        }
+        if self.cpu.status_register & 0b001000_00 > 1 {
+            push_to_string(&mut status_register_text, "greater than");
+        }
+        if self.cpu.status_register & 0b000100_00 > 1 {
+            push_to_string(&mut status_register_text, "less than");
+        }
+        if self.cpu.status_register & 0b000010_00 > 1 {
+            push_to_string(&mut status_register_text, "equal");
+        }
+        if self.cpu.status_register & 0b000001_00 > 1 {
+            push_to_string(&mut status_register_text, "negative");
+        }
 
         let status_text = Text::from(vec![Line::from(vec![
             "Accumulator: ".into(),
             format!("{:02x} ", self.cpu.accumulator).to_string().yellow(),]), Line::from(vec![
             "Registers: ".into(),
             format!("{:02x?} ", self.cpu.registers).to_string().yellow(),]), Line::from(vec![
-            // todo: pretty print the status register
+            // todo: make it so you can see what the compared values are
             "Status register: ".into(),
-            format!("{:08b} ", self.cpu.status_register).to_string().yellow(),]), Line::from(vec![
+            format!("{} ({:08b}) ", status_register_text, self.cpu.status_register).to_string().yellow(),]), Line::from(vec![
             "Program counter: ".into(),
             format!("{:04x} ", self.cpu.program_counter).to_string().yellow(),]), Line::from(vec![
             "Stack pointer: ".into(),
