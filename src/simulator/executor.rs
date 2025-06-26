@@ -80,13 +80,12 @@ impl CPU {
                 }
             }
             Instruction::Subtract(one_register, two_register) => {
-                // todo: fix carry logic (make carry in work as well as carry out)
                 let current_carry = (self.status_register & 0b100000_00).min(1) as u16;
-                let acc_value = self.accumulator as u16 | (current_carry << 9);
                 if let Some(register) = one_register {
-                    let (result, carry_out) = self.accumulator
-                        .overflowing_sub(self.registers[register as usize]);
-                    self.accumulator = result;
+                    let acc_value = self.accumulator as u16 | (current_carry << 9);
+                    let (result, carry_out) = acc_value
+                        .overflowing_sub(self.registers[register as usize] as u16);
+                    self.accumulator = result as u8;
                     
                     if carry_out {
                         self.status_register = self.status_register | 0b100000_00
@@ -96,11 +95,11 @@ impl CPU {
                     
                     self.update_status_one_operand(self.registers[register as usize]);
                 } else if let Some((register1, register2)) = two_register {
-                    let register1_value = self.registers[register1 as usize];
+                    let register1_value = self.registers[register1 as usize] as u16 | (current_carry << 9);
                     let register2_value = self.registers[register2 as usize];
                     
-                    let (result, carry_out) = register1_value.overflowing_sub(register2_value);
-                    self.accumulator = result;
+                    let (result, carry_out) = register1_value.overflowing_sub(register2_value as u16);
+                    self.accumulator = result as u8;
                     
                     if carry_out {
                         self.status_register = self.status_register | 0b100000_00
@@ -108,7 +107,7 @@ impl CPU {
                         self.status_register = self.status_register & 0b011111_00
                     }
                     
-                    self.update_status_two_operands(register1_value, register2_value);
+                    self.update_status_two_operands((register1_value & 0b0000_0000_1111_1111) as u8, register2_value);
                 }
             }
             Instruction::Xor(one_register, two_register) => {
