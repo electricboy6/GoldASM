@@ -7,7 +7,7 @@ supported.
 To use a subroutine/label in another file, put the filename (except for the .gasm part), then a dot, then the label.  
 For example, ``jsr ~example.INIT``
 ### Comments
-To make a comment, simply put ``//`` before the comment. Everything after the semicolon up to the newline will be  a comment.  
+To make a comment, simply put ``//`` before the comment. Everything after the ``//`` up to the newline will be  a comment.  
 For example,  
 ```
 lda #9B // this is a comment
@@ -56,10 +56,10 @@ Putting a ``$`` in front of an address indicates that it is indexed
 For example, ``lda $B78E, FE``
 #### Zero Page
 The assembler will automatically infer that the addressing mode is zero paged if the syntax is correct.  
-For example, ``lda A2``
+For example, ``lda %A2``
 #### Zero Page Indexed
 The assembler will infer that the addressing mode is zero page indexed if the syntax is correct.  
-For example, ``lda C3, $03``
+For example, ``lda $C3, 03``
 ### Instructions
 Instructions are not case sensitive.
 #### Parameters
