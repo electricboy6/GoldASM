@@ -21,6 +21,7 @@ use ratatui::{
     DefaultTerminal, Frame,
 };
 use crate::simulator::executor::CPU;
+use crate::disassembler;
 
 #[derive(Debug, Default)]
 pub struct App {
@@ -83,11 +84,31 @@ impl App {
             Layout::horizontal([Constraint::Fill(6), Constraint::Fill(2), Constraint::Fill(2)]).areas(outer_block.inner(frame.area()));
         
         // instructions list
-        // todo: live disassembly
-        let instructions = self.cpu.memory[self.cpu.program_counter.saturating_sub(16) as usize..(self.cpu.program_counter.saturating_add(16)) as usize]
-            .to_vec();
-        let memory_strings: Vec<Span> = instructions.iter().map(|item| -> Span {
-            format!("0x{:02x?}", item).yellow()
+        let memory_list_start = self.cpu.program_counter.saturating_sub(16) as usize;
+        let memory_list_end = self.cpu.program_counter.saturating_add(16) as usize;
+
+        let instructions = self.cpu.memory[memory_list_start..memory_list_end].to_vec();
+
+        // horribly inefficient way of doing live disassembly but whatever
+        let mut parsed_instructions = Vec::with_capacity(0xFFFF / 2);
+        let mut bytes_to_skip = Vec::with_capacity(0xFFFF / 2);
+        let mut program_counter_value: u32 = 0x0000;
+        while program_counter_value <= 0xFFFF {
+            let (parsed_instruction, num_extra_bytes) = bin_parser::parse_instruction(self.cpu.memory, program_counter_value as u16);
+            parsed_instructions.push(parsed_instruction);
+            bytes_to_skip.push(num_extra_bytes);
+            program_counter_value += num_extra_bytes as u32;
+            program_counter_value += 1;
+        }
+        let disassembled_lines = disassembler::disassemble(parsed_instructions, bytes_to_skip);
+
+        let memory_strings: Vec<Line> = instructions.iter().enumerate().map(|(index, item)| -> Line {
+            let disassembled_line = disassembled_lines[index + memory_list_start].clone();
+            if disassembled_line == "".to_string() {
+                format!("0x{:04x?}: ", index + memory_list_start).yellow() + format!("0x{:02x?}", item).green()
+            } else {
+                format!("0x{:04x?}: ", index + memory_list_start).yellow() + format!("0x{:02x?}", item).green() + " -> ".light_green() + disassembled_line.light_green()
+            }
         }).collect();
         
         let memory_list = List::new(memory_strings)
@@ -97,12 +118,11 @@ impl App {
             .repeat_highlight_symbol(false);
         
         // stack list
-        // todo: figure out why the heck the stack sometimes just doesn't show the entire thing
-        //       also maybe show addresses in memory and stack
         let stack = self.cpu.memory[0x0100..0x0200].to_vec();
-        let stack_strings: Vec<Span> = stack.iter().map(|item| -> Span {
-            format!("0x{:02x?}", item).yellow()
+        let stack_strings: Vec<Line> = stack.iter().enumerate().map(|(index, item)| -> Line {
+            format!("0x{:04x?}: ", 0x0100 + index).yellow() + format!("0x{:02x?}", item).green()
         }).collect();
+
         let stack_list = List::new(stack_strings)
             .block(Block::bordered().title("Stack"))
             .highlight_symbol("-> ")
@@ -204,9 +224,12 @@ impl Widget for &mut App {
             format!("{:02x} ", self.cpu.accumulator).to_string().yellow(),]), Line::from(vec![
             "Registers: ".into(),
             format!("{:02x?} ", self.cpu.registers).to_string().yellow(),]), Line::from(vec![
-            // todo: make it so you can see what the compared values are
             "Status register: ".into(),
             format!("{} ({:08b}) ", status_register_text, self.cpu.status_register).to_string().yellow(),]), Line::from(vec![
+            "Operand 1: ".into(),
+            format!("{:02x} ", self.cpu.operand1).to_string().yellow(),]), Line::from(vec![
+            "Operand 2: ".into(),
+            format!("{:02x} ", self.cpu.operand2).to_string().yellow(),]), Line::from(vec![
             "Program counter: ".into(),
             format!("{:04x} ", self.cpu.program_counter).to_string().yellow(),]), Line::from(vec![
             "Stack pointer: ".into(),

@@ -115,7 +115,7 @@ impl Address {
 #[derive(Debug, PartialEq, Clone)]
 pub struct NonZeroPageAddress {
     pub address: Number,
-    pub offset: Option<Register>,
+    pub index: Option<Register>,
     pub mode: AddressMode,
 }
 impl NonZeroPageAddress {
@@ -125,14 +125,14 @@ impl NonZeroPageAddress {
             AddressMode::Absolute => {
                 NonZeroPageAddress {
                     address: address.address,
-                    offset: None,
+                    index: None,
                     mode: AddressMode::Absolute,
                 }
             },
             AddressMode::Indexed => {
                 NonZeroPageAddress {
                     address: address.address,
-                    offset: address.index,
+                    index: address.index,
                     mode: AddressMode::Indexed,
                 }
             },

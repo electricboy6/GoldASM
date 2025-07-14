@@ -1,9 +1,11 @@
 mod asm_parser;
 mod assembler;
 mod simulator;
+mod disassembler;
 
 use clap::{arg, Command, Arg, value_parser};
 
+// todo: add a branch greater than and branch less than
 fn main() {
     let matches = Command::new("GoldASM Assembler")
         .version("0.1.0-dev")

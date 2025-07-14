@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter};
+
 pub struct Address {
     pub address: u16,
     pub index: Option<u8>
@@ -27,6 +29,27 @@ impl Address {
         Address {
             address: address as u16,
             index: Some(index)
+        }
+    }
+}
+impl Display for Address {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if self.address <= 0x00ff {
+            if let Some(index) = self.index {
+                // zero page indexed
+                write!(f, "${:02x}, {:02x}", self.address, index)
+            } else {
+                // zero page
+                write!(f, "%{:02x}", self.address)
+            }
+        } else {
+            if let Some(index) = self.index {
+                // indexed
+                write!(f, "${:04x}, {:02x}", self.address, index)
+            } else {
+                // absolute
+                write!(f, "%{:04x}", self.address)
+            }
         }
     }
 }

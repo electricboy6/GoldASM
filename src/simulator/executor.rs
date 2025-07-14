@@ -19,6 +19,8 @@ pub struct CPU {
     pub stack_pointer: u8,
     pub memory: [u8; 65536],
     pub program_counter: u16,
+    pub operand1: u8,
+    pub operand2: u8,
 }
 impl Default for CPU {
     fn default() -> Self {
@@ -34,6 +36,8 @@ impl CPU {
             stack_pointer: 0x00,
             memory: [0; 65536],
             program_counter: 0x0000,
+            operand1: 0x00,
+            operand2: 0x00,
         };
         cpu.reset();
         cpu
@@ -265,12 +269,18 @@ impl CPU {
                 }
             }
             Instruction::BranchEqual(register, address) => {
+                let operand1 = self.accumulator;
+                let operand2 = self.registers[register as usize];
+                self.update_status_two_operands(operand1, operand2);
                 if self.registers[register as usize] == self.accumulator {
                     self.program_counter = calculate_address(address, self);
                     return;
                 }
             }
             Instruction::BranchNotEqual(register, address) => {
+                let operand1 = self.accumulator;
+                let operand2 = self.registers[register as usize];
+                self.update_status_two_operands(operand1, operand2);
                 if self.registers[register as usize] != self.accumulator {
                     self.program_counter = calculate_address(address, self);
                     return;
@@ -349,6 +359,8 @@ impl CPU {
         } else {
             self.status_register = self.status_register & 0b111110_00;
         }
+        self.operand1 = operand1;
+        self.operand2 = operand2;
     }
     /// note: cannot update the carry, that must be done manually
     fn update_status_one_operand(&mut self, other_operand: u8) {
@@ -377,6 +389,8 @@ impl CPU {
         } else {
             self.status_register = self.status_register & 0b111110_00;
         }
+        self.operand1 = other_operand;
+        self.operand2 = 0x00;
     }
     /// note: cannot update the carry, that must be done manually
     fn update_status_no_operands(&mut self) {
@@ -392,5 +406,7 @@ impl CPU {
         } else {
             self.status_register = self.status_register & 0b111110_00;
         }
+        self.operand1 = 0x00;
+        self.operand2 = 0x00;
     }
 }

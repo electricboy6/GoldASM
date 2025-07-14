@@ -5,7 +5,7 @@ sr TEST:
     noop
     rts TEST
 
-lda #20
+lda #10
 jsr ~DELAY
 // program is over, loop forever
 jmp ~LOOP
