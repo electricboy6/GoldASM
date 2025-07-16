@@ -84,7 +84,7 @@ The parameters of the function are in parentheses. If there are multiple version
 - nor   ((r), (r, r))
 - and   ((r), (r, r))
 - nand  ((r), (r, r))
-- not
+- not   (r)
 - ror
 - rol
 - shr
