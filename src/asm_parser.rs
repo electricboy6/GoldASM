@@ -284,6 +284,8 @@ pub enum Instruction {
     BranchIfNotEqual(Register, Option<NonZeroPageAddress>, Option<Label>),
     BranchIfZero(Option<NonZeroPageAddress>, Option<Label>),
     BranchIfNotZero(Option<NonZeroPageAddress>, Option<Label>),
+    BranchIfGreater(Register, Option<NonZeroPageAddress>, Option<Label>),
+    BranchIfLess(Register, Option<NonZeroPageAddress>, Option<Label>),
     Jump(Option<NonZeroPageAddress>, Option<Label>),
     JumpSubroutine(Option<NonZeroPageAddress>, Option<Subroutine>),
     ReturnFromSubroutine(Subroutine),
@@ -291,7 +293,6 @@ pub enum Instruction {
     Subroutine(String),
     PushProgramCounter,
     PopProgramCounter,
-    IncrementProgramCounter,
     Pointer(String, PointerAddress),
     SetOrigin(Option<Address>),
     Word(Immediate),
@@ -672,6 +673,62 @@ pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
                 } else {
                     instructions.push(Instruction::BranchIfNotZero(
                         Some(NonZeroPageAddress::from_str(parameter_str)), None
+                    ));
+                }
+            },
+            "bg" => {
+                let register = Register::from_str(words[1].strip_suffix(',').unwrap());
+                if parameter_str.contains('~') {
+                    // using a name
+                    if parameter_str.contains('.') {
+                        // in another file, don't add our filename
+                        instructions.push(Instruction::BranchIfGreater(
+                            register,
+                            None, Some(Label {
+                                name: words[2].strip_prefix('~').unwrap().to_string(),
+                            })
+                        ));
+                    } else {
+                        // in our file, add our filename
+                        instructions.push(Instruction::BranchIfGreater(
+                            register,
+                            None, Some(Label {
+                                name: module_name_dot.to_string() + words[2].strip_prefix('~').unwrap()
+                            })
+                        ));
+                    }
+                } else {
+                    instructions.push(Instruction::BranchIfGreater(
+                        register,
+                        Some(NonZeroPageAddress::from_str(words[2])), None
+                    ));
+                }
+            },
+            "bl" => {
+                let register = Register::from_str(words[1].strip_suffix(',').unwrap());
+                if parameter_str.contains('~') {
+                    // using a name
+                    if parameter_str.contains('.') {
+                        // in another file, don't add our filename
+                        instructions.push(Instruction::BranchIfLess(
+                            register,
+                            None, Some(Label {
+                                name: words[2].strip_prefix('~').unwrap().to_string(),
+                            })
+                        ));
+                    } else {
+                        // in our file, add our filename
+                        instructions.push(Instruction::BranchIfLess(
+                            register,
+                            None, Some(Label {
+                                name: module_name_dot.to_string() + words[2].strip_prefix('~').unwrap()
+                            })
+                        ));
+                    }
+                } else {
+                    instructions.push(Instruction::BranchIfLess(
+                        register,
+                        Some(NonZeroPageAddress::from_str(words[2])), None
                     ));
                 }
             },

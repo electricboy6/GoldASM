@@ -1,7 +1,8 @@
+mod symbols;
+
 use crate::simulator::bin_parser::Instruction;
 
-// todo: check for jsr
-//       also maybe add in debug symbols? if I have time
+// todo: add in debug symbols
 pub fn disassemble(instructions: Vec<Instruction>, bytes_to_skip: Vec<u8>) -> Vec<String> {
     let mut result = Vec::with_capacity(instructions.len());
     for (index, instruction) in instructions.iter().enumerate() {
@@ -132,6 +133,12 @@ pub fn disassemble(instructions: Vec<Instruction>, bytes_to_skip: Vec<u8>) -> Ve
             Instruction::BranchNotZero(address) => {
                 result.push(format!("bnz {}", address));
             }
+            Instruction::BranchGreater(register, address) => {
+                result.push(format!("bg {:02x?}, {}", register, address));
+            }
+            Instruction::BranchLess(register, address) => {
+                result.push(format!("bl {:02x?}, {}", register, address));
+            }
             Instruction::Jump(address) => {
                 result.push(format!("jmp {}", address));
             }
@@ -142,7 +149,7 @@ pub fn disassemble(instructions: Vec<Instruction>, bytes_to_skip: Vec<u8>) -> Ve
                 result.push("plpc".to_string());
             }
             Instruction::IncrementProgramCounter => {
-                unimplemented!("I don't think this instruction is even used")
+                unimplemented!("instruction has been removed but i'm too lazy to actually remove it")
             }
             Instruction::PopProgramCounterSubroutine => {
                 result.push("rts".to_string());
@@ -153,6 +160,23 @@ pub fn disassemble(instructions: Vec<Instruction>, bytes_to_skip: Vec<u8>) -> Ve
             result.push("".to_string());
         }
     }
+
+    for (window_index, window) in result.clone().windows(2).enumerate() {
+        let index = window_index.div_ceil(2);
+        if let Some(first) = window.get(0) {
+            let first = first.as_str();
+            if let Some(second) = window.get(1) {
+                let second = second.as_str();
+
+                // todo: what's wrong with this? it gets written to the list but doesn't show up in the view
+                if first.starts_with("phpc") && second.starts_with("jmp %") {
+                    result[index] = format!("jsr {}", second.splitn(2, ' ').nth(1).unwrap());
+                    result[index + 1] = "".to_string();
+                }
+            }
+        }
+    }
+
     result
 }
 

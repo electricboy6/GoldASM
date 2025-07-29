@@ -298,6 +298,24 @@ impl CPU {
                     return;
                 }
             }
+            Instruction::BranchGreater(register, address) => {
+                let operand1 = self.accumulator;
+                let operand2 = self.registers[register as usize];
+                self.update_status_two_operands(operand1, operand2);
+                if self.registers[register as usize] > self.accumulator {
+                    self.program_counter = calculate_address(address, self);
+                    return;
+                }
+            }
+            Instruction::BranchLess(register, address) => {
+                let operand1 = self.accumulator;
+                let operand2 = self.registers[register as usize];
+                self.update_status_two_operands(operand1, operand2);
+                if self.registers[register as usize] < self.accumulator {
+                    self.program_counter = calculate_address(address, self);
+                    return;
+                }
+            }
             Instruction::Jump(address) => {
                 self.program_counter = calculate_address(address, self);
                 return;

@@ -84,6 +84,8 @@ pub enum Instruction {
     BranchNotEqual(u8, Address),
     BranchZero(Address),
     BranchNotZero(Address),
+    BranchGreater(u8, Address),
+    BranchLess(u8, Address),
     Jump(Address),
     PushProgramCounter,
     PopProgramCounter,
@@ -340,8 +342,34 @@ pub fn parse_instruction(memory: [u8; 65536], program_counter: u16) -> (Instruct
         }
         0x54 => (Instruction::PushProgramCounter, 0),
         0x55 => (Instruction::PopProgramCounter, 0),
-        0x56 => (Instruction::IncrementProgramCounter, 0),
+        //0x56 => (Instruction::IncrementProgramCounter, 0),
         0x57 => (Instruction::PopProgramCounterSubroutine, 0),
+        0x58 => {
+            let parameter1 = memory[program_counter + 1];
+            let parameter2 = memory[program_counter + 2];
+            let parameter3 = memory[program_counter + 3];
+            (Instruction::BranchGreater(parameter1, Address::new_absolute(parameter2, parameter3)), 3)
+        }
+        0x59 => {
+            let parameter1 = memory[program_counter + 1];
+            let parameter2 = memory[program_counter + 2];
+            let parameter3 = memory[program_counter + 3];
+            let parameter4 = memory[program_counter + 4];
+            (Instruction::BranchGreater(parameter1, Address::new_indexed(parameter2, parameter3, parameter4)), 3)
+        }
+        0x5A => {
+            let parameter1 = memory[program_counter + 1];
+            let parameter2 = memory[program_counter + 2];
+            let parameter3 = memory[program_counter + 3];
+            (Instruction::BranchLess(parameter1, Address::new_absolute(parameter2, parameter3)), 3)
+        }
+        0x5B => {
+            let parameter1 = memory[program_counter + 1];
+            let parameter2 = memory[program_counter + 2];
+            let parameter3 = memory[program_counter + 3];
+            let parameter4 = memory[program_counter + 4];
+            (Instruction::BranchLess(parameter1, Address::new_indexed(parameter2, parameter3, parameter4)), 3)
+        }
         _ => {
             panic!("Found invalid byte while parsing at index {program_counter}! ({:02x?})\n This means that we're probably off by some value, so don't trust the results.", &memory[program_counter-2..program_counter+2]);
         }

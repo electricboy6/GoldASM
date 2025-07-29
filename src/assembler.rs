@@ -507,6 +507,64 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
                     insert(&mut binary_instructions, 0x00, &mut target_address);
                 }
             }
+            Instruction::BranchIfGreater(register, address, label) => {
+                if let Some(address) = address {
+                    match address.mode {
+                        AddressMode::Absolute => {
+                            insert(&mut binary_instructions, 0x58, &mut target_address);
+                            insert(&mut binary_instructions, register.address, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
+                        }
+                        AddressMode::Indexed => {
+                            insert(&mut binary_instructions, 0x59, &mut target_address);
+                            insert(&mut binary_instructions, register.address, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
+                        }
+                        _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
+                    }
+                } else {
+                    assert!(label.is_some());
+                    // absolute address mode for labels
+                    insert(&mut binary_instructions, 0x58, &mut target_address);
+                    insert(&mut binary_instructions, register.address, &mut target_address);
+                    label_usages.push(AssemblerLabelUse {
+                        name: label.unwrap().name,
+                        index: (target_address + 1) as u16
+                    });
+                    // allocate space for the address to be replaced
+                    insert(&mut binary_instructions, 0x00, &mut target_address);
+                    insert(&mut binary_instructions, 0x00, &mut target_address);
+                }
+            }
+            Instruction::BranchIfLess(register, address, label) => {
+                if let Some(address) = address {
+                    match address.mode {
+                        AddressMode::Absolute => {
+                            insert(&mut binary_instructions, 0x5A, &mut target_address);
+                            insert(&mut binary_instructions, register.address, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
+                        }
+                        AddressMode::Indexed => {
+                            insert(&mut binary_instructions, 0x5B, &mut target_address);
+                            insert(&mut binary_instructions, register.address, &mut target_address);
+                            append(&mut binary_instructions, &mut address.address.to_bytes(), &mut target_address);
+                        }
+                        _ => unreachable!("NonZeroPageAddress had zero paged address mode!")
+                    }
+                } else {
+                    assert!(label.is_some());
+                    // absolute address mode for labels
+                    insert(&mut binary_instructions, 0x5A, &mut target_address);
+                    insert(&mut binary_instructions, register.address, &mut target_address);
+                    label_usages.push(AssemblerLabelUse {
+                        name: label.unwrap().name,
+                        index: (target_address + 1) as u16
+                    });
+                    // allocate space for the address to be replaced
+                    insert(&mut binary_instructions, 0x00, &mut target_address);
+                    insert(&mut binary_instructions, 0x00, &mut target_address);
+                }
+            }
             Instruction::Jump(address, label) => {
                 if let Some(address) = address {
                     match address.mode {
@@ -538,9 +596,6 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
             }
             Instruction::PopProgramCounter => {
                 insert(&mut binary_instructions, 0x55, &mut target_address);
-            }
-            Instruction::IncrementProgramCounter => {
-                insert(&mut binary_instructions, 0x56, &mut target_address);
             }
             Instruction::PopProgramCounterSubroutine => {
                 insert(&mut binary_instructions, 0x57, &mut target_address);

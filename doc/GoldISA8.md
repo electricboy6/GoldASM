@@ -126,6 +126,12 @@ Opcodes ``0x42``-``0x62`` have been reserved for flow control.
 ``0x56``
 #### PLPCSR
 ``0x57``
+#### BG
+``0x58 0xzz 0xzz`` - absolute  
+``0x59 0xzz 0xzz 0xzz`` - indexed
+#### BL
+``0x5A 0xzz 0xzz`` - absolute  
+``0x5B 0xzz 0xzz 0xzz`` - indexed
 ### Other operations
 Other operations besides the ones described should reset the CPU. The instruction ``FF`` is never valid and must reset
 the CPU.
