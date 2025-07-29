@@ -22,6 +22,7 @@ use ratatui::{
 };
 use crate::simulator::executor::CPU;
 use crate::disassembler;
+use crate::simulator::bin_parser::Instruction;
 
 #[derive(Debug, Default)]
 pub struct App {
@@ -90,17 +91,22 @@ impl App {
         let instructions = self.cpu.memory[memory_list_start..memory_list_end].to_vec();
 
         // horribly inefficient way of doing live disassembly but whatever
-        let mut parsed_instructions = Vec::with_capacity(0xFFFF / 2);
-        let mut bytes_to_skip = Vec::with_capacity(0xFFFF / 2);
+        let mut parsed_instructions: Vec<Instruction> = Vec::with_capacity(0xFFFF / 2);
+        let mut bytes_to_skip: Vec<u8> = Vec::with_capacity(0xFFFF / 2);
         let mut program_counter_value: u32 = 0x0000;
         while program_counter_value <= 0xFFFF {
-            let (parsed_instruction, num_extra_bytes) = bin_parser::parse_instruction(self.cpu.memory, program_counter_value as u16);
+            let (parsed_instruction, num_extra_bytes) = bin_parser::parse_instruction(&self.cpu.memory, program_counter_value as u16);
             parsed_instructions.push(parsed_instruction);
             bytes_to_skip.push(num_extra_bytes);
             program_counter_value += num_extra_bytes as u32;
             program_counter_value += 1;
         }
-        let disassembled_lines = disassembler::disassemble(parsed_instructions, bytes_to_skip);
+        // todo: run disassembly only on visible parts of memory if it's been changed
+        //       (disassembly is horribly performance intensive because of all the strings)
+        //let disassembled_lines = disassembler::disassemble(parsed_instructions, bytes_to_skip);
+        let disassembled_lines = self.cpu.memory.iter().map(|value| -> String {
+            value.to_string()
+        }).collect::<Vec<String>>();
 
         let memory_strings: Vec<Line> = instructions.iter().enumerate().map(|(index, item)| -> Line {
             let disassembled_line = disassembled_lines[index + memory_list_start].clone();

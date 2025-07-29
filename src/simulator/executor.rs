@@ -52,7 +52,7 @@ impl CPU {
         self.program_counter = ((high_byte as u16) << 8) | (low_byte as u16);
     }
     pub fn step(&mut self) {
-        let (instruction, instruction_extra_bytes) = bin_parser::parse_instruction(self.memory, self.program_counter);
+        let (instruction, instruction_extra_bytes) = bin_parser::parse_instruction(&self.memory, self.program_counter);
         match instruction {
             Instruction::Add(one_register, two_register) => {
                 if let Some(register) = one_register {
@@ -67,7 +67,7 @@ impl CPU {
                     } else {
                         self.status_register = self.status_register & 0b011111_00
                     }
-                    self.update_status_one_operand(register_value as u8);
+                    self.update_status_two_operands(self.accumulator, register_value as u8);
                 } else if let Some((register1, register2)) = two_register {
                     let current_carry = (self.status_register & 0b100000_00).min(1) as u16;
                     let register1_value = self.registers[register1 as usize] as u16;
@@ -96,8 +96,8 @@ impl CPU {
                     } else {
                         self.status_register = self.status_register & 0b011111_00
                     }
-                    
-                    self.update_status_one_operand(self.registers[register as usize]);
+
+                    self.update_status_two_operands(self.accumulator, self.registers[register as usize]);
                 } else if let Some((register1, register2)) = two_register {
                     let register1_value = self.registers[register1 as usize] as u16 | (current_carry << 9);
                     let register2_value = self.registers[register2 as usize];
@@ -117,7 +117,7 @@ impl CPU {
             Instruction::Xor(one_register, two_register) => {
                 if let Some(register) = one_register {
                     self.accumulator = self.accumulator ^ self.registers[register as usize];
-                    self.update_status_one_operand(self.registers[register as usize]);
+                    self.update_status_two_operands(self.accumulator, self.registers[register as usize]);
                 } else if let Some((register1, register2)) = two_register {
                     self.accumulator = self.registers[register1 as usize] ^ self.registers[register2 as usize];
                     self.update_status_two_operands(self.registers[register1 as usize], self.registers[register2 as usize]);
@@ -126,7 +126,7 @@ impl CPU {
             Instruction::Xnor(one_register, two_register) => {
                 if let Some(register) = one_register {
                     self.accumulator = !(self.accumulator ^ self.registers[register as usize]);
-                    self.update_status_one_operand(self.registers[register as usize]);
+                    self.update_status_two_operands(self.accumulator, self.registers[register as usize]);
                 } else if let Some((register1, register2)) = two_register {
                     self.accumulator = !(self.registers[register1 as usize] ^ self.registers[register2 as usize]);
                     self.update_status_two_operands(self.registers[register1 as usize], self.registers[register2 as usize]);
@@ -135,7 +135,7 @@ impl CPU {
             Instruction::And(one_register, two_register) => {
                 if let Some(register) = one_register {
                     self.accumulator = self.accumulator & self.registers[register as usize];
-                    self.update_status_one_operand(self.registers[register as usize]);
+                    self.update_status_two_operands(self.accumulator, self.registers[register as usize]);
                 } else if let Some((register1, register2)) = two_register {
                     self.accumulator = self.registers[register1 as usize] & self.registers[register2 as usize];
                     self.update_status_two_operands(self.registers[register1 as usize], self.registers[register2 as usize]);
@@ -144,7 +144,7 @@ impl CPU {
             Instruction::Nand(one_register, two_register) => {
                 if let Some(register) = one_register {
                     self.accumulator = !(self.accumulator & self.registers[register as usize]);
-                    self.update_status_one_operand(self.registers[register as usize]);
+                    self.update_status_two_operands(self.accumulator, self.registers[register as usize]);
                 } else if let Some((register1, register2)) = two_register {
                     self.accumulator = !(self.registers[register1 as usize] & self.registers[register2 as usize]);
                     self.update_status_two_operands(self.registers[register1 as usize], self.registers[register2 as usize]);
@@ -153,7 +153,7 @@ impl CPU {
             Instruction::Or(one_register, two_register) => {
                 if let Some(register) = one_register {
                     self.accumulator = self.accumulator | self.registers[register as usize];
-                    self.update_status_one_operand(self.registers[register as usize]);
+                    self.update_status_two_operands(self.accumulator, self.registers[register as usize]);
                 } else if let Some((register1, register2)) = two_register {
                     self.accumulator = self.registers[register1 as usize] | self.registers[register2 as usize];
                     self.update_status_two_operands(self.registers[register1 as usize], self.registers[register2 as usize]);
@@ -162,7 +162,7 @@ impl CPU {
             Instruction::Nor(one_register, two_register) => {
                 if let Some(register) = one_register {
                     self.accumulator = !(self.accumulator | self.registers[register as usize]);
-                    self.update_status_one_operand(self.registers[register as usize]);
+                    self.update_status_two_operands(self.accumulator, self.registers[register as usize]);
                 } else if let Some((register1, register2)) = two_register {
                     self.accumulator = !(self.registers[register1 as usize] | self.registers[register2 as usize]);
                     self.update_status_two_operands(self.registers[register1 as usize], self.registers[register2 as usize]);

@@ -13,13 +13,13 @@ jmp ~LOOP
 // busy loops for however many iterations the accumulator has in it
 sr DELAY:
     cpa 02
-    lda #00
-    cpa 00
+    //lda #00
+    //cpa 00
     lda #01
     cpa 01
     DELAYLOOP:
-        add 00, 01
-        cpa 00
+        add 01 //00, 01
+        // cpa 00
         bne 02, ~DELAYLOOP
     rts DELAY
 

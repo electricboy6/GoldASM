@@ -1,4 +1,4 @@
-mod symbols;
+pub mod symbols;
 
 use crate::simulator::bin_parser::Instruction;
 
@@ -161,14 +161,12 @@ pub fn disassemble(instructions: Vec<Instruction>, bytes_to_skip: Vec<u8>) -> Ve
         }
     }
 
-    for (window_index, window) in result.clone().windows(2).enumerate() {
-        let index = window_index.div_ceil(2);
+    for (index, window) in result.clone().windows(2).enumerate() {
         if let Some(first) = window.get(0) {
             let first = first.as_str();
             if let Some(second) = window.get(1) {
                 let second = second.as_str();
 
-                // todo: what's wrong with this? it gets written to the list but doesn't show up in the view
                 if first.starts_with("phpc") && second.starts_with("jmp %") {
                     result[index] = format!("jsr {}", second.splitn(2, ' ').nth(1).unwrap());
                     result[index + 1] = "".to_string();

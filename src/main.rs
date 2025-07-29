@@ -16,7 +16,7 @@ fn main() {
             Command::new("assemble")
                 .about("Assemble the given file")
                 .arg(Arg::new("sourceFile").required(true))
-                .arg(arg!(-o --output [output]).default_value("program.bin"))
+                .arg(arg!(-o --output [output]).default_value("out"))
                 .arg(arg!(--size [size]).value_parser(value_parser!(u16)).default_value("65535"))
         )
         .subcommand(
@@ -39,11 +39,8 @@ fn main() {
         .get_matches();
     match matches.subcommand() {
         Some(("assemble", sub_matches)) => {
-            // Safeness: sourceFile is required so it will never be none
             let target_file = sub_matches.get_one::<String>("sourceFile").unwrap();
-            // Safeness: output has a default value and will never be none
             let output_file = sub_matches.get_one::<String>("output").unwrap();
-            // Safeness: size has a default value and will never be none
             let output_size = sub_matches.get_one::<u16>("size").unwrap();
             
             let directory = target_file.rsplitn(2, '/').nth(1).unwrap().to_string() + "/";
@@ -54,9 +51,11 @@ fn main() {
             
             let instructions = asm_parser::postprocess(parsed_values.0, parsed_values.1);
             
-            let binary_instructions = assembler::assemble(instructions, *output_size);
+            let (binary_instructions, symbol_table) = assembler::assemble(instructions, *output_size);
             
-            assembler::write(&binary_instructions, directory, output_file);
+            assembler::write(&binary_instructions, &directory, &(output_file.to_string() + ".bin"));
+            assembler::write(&symbol_table.to_bytes(), &directory, &(output_file.to_string() + ".symbols"));
+            
         },
         Some(("simulate", sub_matches)) => {
             match sub_matches.subcommand() {
@@ -65,7 +64,6 @@ fn main() {
                     todo!()
                 },
                 Some(("bin", sub_matches)) => {
-                    // Safeness: sourceFile is required so it will never be none
                     let target_file = sub_matches.get_one::<String>("sourceFile").unwrap();
                     
                     println!("Simulating binary file {}", target_file);

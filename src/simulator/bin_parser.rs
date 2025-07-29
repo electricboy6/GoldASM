@@ -94,7 +94,7 @@ pub enum Instruction {
 }
 
 /// returns the instruction, its parameters, and the number of additional bytes to skip (we automatically increment the program counter, so this is the number of bytes of parameters)
-pub fn parse_instruction(memory: [u8; 65536], program_counter: u16) -> (Instruction, u8) {
+pub fn parse_instruction(memory: &[u8; 65536], program_counter: u16) -> (Instruction, u8) {
     let program_counter = program_counter as usize;
     match memory[program_counter] {
         0x00 => (Instruction::Noop, 0),

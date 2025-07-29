@@ -2,6 +2,7 @@ use std::io::Write;
 use crossterm::style::Stylize;
 use crate::asm_parser;
 use crate::asm_parser::{AddressMode, Instruction};
+use crate::disassembler::symbols::{SymbolTable};
 /*
 Assembling overview:
 pass 1: convert all subroutines, return from subroutines, and jump subroutines to just labels, jumps, and the stack
@@ -10,25 +11,25 @@ pass 3: calculate all addresses
  */
 
 #[derive(Clone, PartialEq, Debug)]
-struct AssemblerLabel {
+pub struct AssemblerLabel {
     pub name: String,
-    pub index: u16,
+    pub address: u16,
 }
 
 #[derive(Clone, PartialEq, Debug)]
-struct AssemblerLabelUse {
+pub struct AssemblerLabelUse {
     pub name: String,
     // INVARIANT: there MUST be a two byte area reserved in the vector for the label
     pub index: u16
 }
 #[derive(Clone, PartialEq, Debug)]
-struct AssemblerPointerUse {
+pub struct AssemblerPointerUse {
     pub pointer: asm_parser::Pointer,
     // INVARIANT: there MUST be an area of the correct size reserved for the pointer's address
     pub index: u16
 }
 #[derive(Clone, PartialEq, Debug)]
-struct AssemblerPointer {
+pub struct AssemblerPointer {
     pub name: String,
     pub address: asm_parser::PointerAddress,
 }
@@ -46,7 +47,7 @@ pub fn preprocess(instructions: Vec<Instruction>) -> Vec<Instruction> {
                 resulting_instructions.push(Instruction::Jump(None, Some(
                     asm_parser::Label { name: label.clone() + "_EndSubroutine" }
                 )));
-                resulting_instructions.push(Instruction::Label(label));
+                resulting_instructions.push(Instruction::Label(label + "_Subroutine"));
             }
             // add in the end of a subroutine
             Instruction::ReturnFromSubroutine(label) => {
@@ -59,7 +60,7 @@ pub fn preprocess(instructions: Vec<Instruction>) -> Vec<Instruction> {
                 resulting_instructions.push(Instruction::PushProgramCounter);
                 if let Some(label_value) = label {
                     resulting_instructions.push(Instruction::Jump(
-                        address, Some(asm_parser::Label { name: label_value.name })
+                        address, Some(asm_parser::Label { name: label_value.name + "_Subroutine" })
                     ));
                 } else {
                     resulting_instructions.push(Instruction::Jump(address, None));
@@ -71,7 +72,7 @@ pub fn preprocess(instructions: Vec<Instruction>) -> Vec<Instruction> {
     resulting_instructions
 }
 
-pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
+pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTable) {
     println!("INFO: Assembling combined files");
     // preprocess
     let processed_instructions = preprocess(instructions);
@@ -85,7 +86,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
     // make the vector of labels
     let mut labels = Vec::new();
     // make the vector of label usages
-    let mut label_usages = Vec::new();
+    let mut label_uses = Vec::new();
     
     // make the vector of pointers
     let mut pointers = Vec::new();
@@ -99,6 +100,9 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
     let mut target_address: usize = 0;
     // max point in memory where we can insert
     let mut max_address: usize = size as usize;
+
+    // self-evident
+    let mut symbol_table = SymbolTable::new();
 
     // iterate through the instructions and insert as we go (assembler pass 2)
     // this is long not because it is complicated, but because there are a lot of instructions to parse
@@ -310,7 +314,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
                     assert!(label.is_some());
                     // absolute address mode for labels
                     insert(&mut binary_instructions, 0x42, &mut target_address);
-                    label_usages.push(AssemblerLabelUse {
+                    label_uses.push(AssemblerLabelUse {
                         name: label.unwrap().name,
                         index: (target_address + 1) as u16
                     });
@@ -336,7 +340,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
                     assert!(label.is_some());
                     // absolute address mode for labels
                     insert(&mut binary_instructions, 0x44, &mut target_address);
-                    label_usages.push(AssemblerLabelUse {
+                    label_uses.push(AssemblerLabelUse {
                         name: label.unwrap().name,
                         index: (target_address + 1) as u16
                     });
@@ -362,7 +366,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
                     assert!(label.is_some());
                     // absolute address mode for labels
                     insert(&mut binary_instructions, 0x46, &mut target_address);
-                    label_usages.push(AssemblerLabelUse {
+                    label_uses.push(AssemblerLabelUse {
                         name: label.unwrap().name,
                         index: (target_address + 1) as u16
                     });
@@ -388,7 +392,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
                     assert!(label.is_some());
                     // absolute address mode for labels
                     insert(&mut binary_instructions, 0x48, &mut target_address);
-                    label_usages.push(AssemblerLabelUse {
+                    label_uses.push(AssemblerLabelUse {
                         name: label.unwrap().name,
                         index: (target_address + 1) as u16
                     });
@@ -417,7 +421,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
                     // absolute address mode for labels
                     insert(&mut binary_instructions, 0x4A, &mut target_address);
                     insert(&mut binary_instructions, register.address, &mut target_address);
-                    label_usages.push(AssemblerLabelUse {
+                    label_uses.push(AssemblerLabelUse {
                         name: label.unwrap().name,
                         index: (target_address + 1) as u16
                     });
@@ -446,7 +450,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
                     // absolute address mode for labels
                     insert(&mut binary_instructions, 0x4C, &mut target_address);
                     insert(&mut binary_instructions, register.address, &mut target_address);
-                    label_usages.push(AssemblerLabelUse {
+                    label_uses.push(AssemblerLabelUse {
                         name: label.unwrap().name,
                         index: (target_address + 1) as u16
                     });
@@ -472,7 +476,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
                     assert!(label.is_some());
                     // absolute address mode for labels
                     insert(&mut binary_instructions, 0x4E, &mut target_address);
-                    label_usages.push(AssemblerLabelUse {
+                    label_uses.push(AssemblerLabelUse {
                         name: label.unwrap().name,
                         index: (target_address + 1) as u16
                     });
@@ -498,7 +502,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
                     assert!(label.is_some());
                     // absolute address mode for labels
                     insert(&mut binary_instructions, 0x50, &mut target_address);
-                    label_usages.push(AssemblerLabelUse {
+                    label_uses.push(AssemblerLabelUse {
                         name: label.unwrap().name,
                         index: (target_address + 1) as u16
                     });
@@ -527,7 +531,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
                     // absolute address mode for labels
                     insert(&mut binary_instructions, 0x58, &mut target_address);
                     insert(&mut binary_instructions, register.address, &mut target_address);
-                    label_usages.push(AssemblerLabelUse {
+                    label_uses.push(AssemblerLabelUse {
                         name: label.unwrap().name,
                         index: (target_address + 1) as u16
                     });
@@ -556,7 +560,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
                     // absolute address mode for labels
                     insert(&mut binary_instructions, 0x5A, &mut target_address);
                     insert(&mut binary_instructions, register.address, &mut target_address);
-                    label_usages.push(AssemblerLabelUse {
+                    label_uses.push(AssemblerLabelUse {
                         name: label.unwrap().name,
                         index: (target_address + 1) as u16
                     });
@@ -582,7 +586,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
                     assert!(label.is_some());
                     // absolute address mode for labels
                     insert(&mut binary_instructions, 0x52, &mut target_address);
-                    label_usages.push(AssemblerLabelUse {
+                    label_uses.push(AssemblerLabelUse {
                         name: label.unwrap().name,
                         index: (target_address + 1) as u16
                     });
@@ -600,11 +604,11 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
             Instruction::PopProgramCounterSubroutine => {
                 insert(&mut binary_instructions, 0x57, &mut target_address);
             }
-            // ---------- assembler directives ----------
+            // -------------------- assembler directives --------------------
             Instruction::Label(name) => {
                 labels.push(AssemblerLabel {
                     name,
-                    index: target_address as u16
+                    address: target_address as u16
                 });
             }
             Instruction::Pointer(name, address) => {
@@ -643,10 +647,10 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
 
     // compute addresses of all labels and replace labels with addresses
     // part 1 of pass 3 in assembling sequence
-    for label_use in label_usages {
+    for label_use in label_uses {
         let mut target_label = &AssemblerLabel {
             name: "".to_string(),
-            index: 0
+            address: 0
         };
         for label in labels.iter() {
             if label.name == label_use.name {
@@ -662,7 +666,10 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
             }
             panic!("Could not find label \"{}\"!", label_use.name);
         }
-        let label_address = target_label.index.to_be_bytes();
+
+        symbol_table.add_label_use(label_use.clone(), target_label.clone());
+
+        let label_address = target_label.address.to_be_bytes();
         binary_instructions[label_use.index as usize] = label_address[1];
         binary_instructions[(label_use.index - 1) as usize] = label_address[0];
     }
@@ -679,6 +686,9 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
         if target_pointer.name == "" {
             panic!("Could not find pointer \"{}\"!", pointer_use.pointer.name);
         }
+
+        symbol_table.add_pointer_use(pointer_use.clone(), target_pointer.clone());
+
         let pointer_address = target_pointer.address.address.to_bytes();
         match target_pointer.address.address.size {
             asm_parser::NumberSize::EightBit => {
@@ -691,12 +701,19 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> Vec<u8> {
             }
         }
     }
+    // fill out the symbol table
+    for label in labels {
+        symbol_table.add_label(label);
+    }
+    for pointer in pointers {
+        symbol_table.add_pointer(pointer);
+    }
     
     if binary_instructions.len() > size as usize + 1 {
         panic!("Could not fit file in target size!");
     }
 
-    binary_instructions
+    (binary_instructions, symbol_table)
 }
 
 fn insert(array: &mut [u8], value: u8, index: &mut usize) {
@@ -711,17 +728,17 @@ fn append(array: &mut [u8], values: &mut [u8], index: &mut usize) {
     }
 }
 
-pub fn write(binary: &Vec<u8>, directory: String, filename: &str) {
+pub fn write(binary: &Vec<u8>, directory: &str, filename: &str) {
     let file = std::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
-        .open(directory.clone() + filename);
+        .open(directory.to_string() + filename);
 
     if file.is_err() {
         eprintln!("{}", format!("WARNING: Unable to create file \"{filename}\" (removing file, trying again)").yellow());
-        std::fs::remove_file(directory.clone() + filename).expect("Failed to remove existing target file!");
+        std::fs::remove_file(directory.to_string() + filename).expect("Failed to remove existing target file!");
         // if it's something else, the call stack will just fill up
-        // yes this is lazy error handling, what do you want me to do? this is still unfinished
+        // todo: yes this is lazy error handling, what do you want me to do? this is still unfinished
         write(binary, directory, filename);
         return;
     }
