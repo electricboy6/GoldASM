@@ -21,20 +21,11 @@ fn main() {
         )
         .subcommand(
             Command::new("simulate")
-                .about("Simulate the given file")
+                .about("Simulate the given binary file")
                 .propagate_version(true)
-                .subcommand_required(true)
                 .arg_required_else_help(true)
-                .subcommand(
-                    Command::new("asm")
-                        .about("Simulate the given assembly file")
-                        .arg(Arg::new("sourceFile").required(true))
-                )
-                .subcommand(
-                    Command::new("bin")
-                        .about("Simulate the given binary file")
-                        .arg(Arg::new("sourceFile").required(true))
-                )
+                .arg(Arg::new("sourceFile").required(true))
+                .arg(Arg::new("symbolTable").required(false))
         )
         .get_matches();
     match matches.subcommand() {
@@ -58,19 +49,14 @@ fn main() {
             
         },
         Some(("simulate", sub_matches)) => {
-            match sub_matches.subcommand() {
-                Some(("asm", sub_matches)) => {
-                    println!("Simulating assembly file {}", sub_matches.get_one::<String>("sourceFile").unwrap());
-                    todo!()
-                },
-                Some(("bin", sub_matches)) => {
-                    let target_file = sub_matches.get_one::<String>("sourceFile").unwrap();
-                    
-                    println!("Simulating binary file {}", target_file);
-                    simulator::run(target_file.clone()).unwrap();
-                },
-                _ => unreachable!("Subcommand is required")
+            let target_file = sub_matches.get_one::<String>("sourceFile").unwrap();
+            let symbol_table_file = sub_matches.get_one::<String>("symbolTable");
+            if symbol_table_file.is_some() {
+                let content = std::fs::read(symbol_table_file.unwrap()).expect("File not found.");
             }
+
+            println!("Simulating binary file {}", target_file);
+            simulator::run(target_file.clone()).unwrap();
         }
         _ => unreachable!("Subcommand is required"),
     }

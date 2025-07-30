@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter};
 
+#[derive(Debug, Copy, Clone)]
 pub struct Address {
     pub address: u16,
     pub index: Option<u8>
@@ -53,6 +54,7 @@ impl Display for Address {
         }
     }
 }
+#[derive(Debug, Copy, Clone)]
 pub enum Instruction {
     Noop,
     Add(Option<u8>, Option<(u8, u8)>),

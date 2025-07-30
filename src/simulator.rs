@@ -22,6 +22,7 @@ use ratatui::{
 };
 use crate::simulator::executor::CPU;
 use crate::disassembler;
+use crate::disassembler::symbols::SymbolTable;
 use crate::simulator::bin_parser::Instruction;
 
 #[derive(Debug, Default)]
@@ -29,6 +30,7 @@ pub struct App {
     cpu: CPU,
     exit: bool,
     binary_path: String,
+    symbol_table: Option<SymbolTable>,
     instruction_state: ListState,
     stack_state: ListState,
     auto_run: bool,
@@ -38,9 +40,27 @@ impl App {
     /// runs the application's main loop until the user quits
     pub fn run(&mut self, terminal: &mut DefaultTerminal, binary_path: String) -> io::Result<()> {
         self.binary_path = binary_path;
+        self.symbol_table = None;
         self.reset();
         self.instruction_state = ListState::default();
         self.stack_state = ListState::default();
+        while !self.exit {
+            terminal.draw(|frame| self.draw(frame))?;
+            self.handle_events()?;
+        }
+        Ok(())
+    }
+    pub fn run_with_symbol_table(&mut self, terminal: &mut DefaultTerminal, binary_path: String, table_path: String) -> io::Result<()> {
+        self.binary_path = binary_path;
+
+        let symbol_table_file = std::fs::read(table_path).expect("File not found.");
+        self.symbol_table = Some(SymbolTable::from_bytes(&symbol_table_file));
+
+        self.reset();
+
+        self.instruction_state = ListState::default();
+        self.stack_state = ListState::default();
+
         while !self.exit {
             terminal.draw(|frame| self.draw(frame))?;
             self.handle_events()?;
@@ -90,10 +110,12 @@ impl App {
 
         let instructions = self.cpu.memory[memory_list_start..memory_list_end].to_vec();
 
-        // horribly inefficient way of doing live disassembly but whatever
+        // create variables
         let mut parsed_instructions: Vec<Instruction> = Vec::with_capacity(0xFFFF / 2);
         let mut bytes_to_skip: Vec<u8> = Vec::with_capacity(0xFFFF / 2);
-        let mut program_counter_value: u32 = 0x0000;
+        let mut program_counter_value: u32 = 0x0200;
+        // parse all instructions
+        // todo: handle the cases where it's an invalid instruction (probably return a Result<(Instruction, u8)> instead of just panicking)
         while program_counter_value <= 0xFFFF {
             let (parsed_instruction, num_extra_bytes) = bin_parser::parse_instruction(&self.cpu.memory, program_counter_value as u16);
             parsed_instructions.push(parsed_instruction);
@@ -101,15 +123,40 @@ impl App {
             program_counter_value += num_extra_bytes as u32;
             program_counter_value += 1;
         }
-        // todo: run disassembly only on visible parts of memory if it's been changed
-        //       (disassembly is horribly performance intensive because of all the strings)
-        //let disassembled_lines = disassembler::disassemble(parsed_instructions, bytes_to_skip);
-        let disassembled_lines = self.cpu.memory.iter().map(|value| -> String {
-            value.to_string()
-        }).collect::<Vec<String>>();
+        // create list to disassemble
+        program_counter_value = 0x0000;
+        let mut disassemble_start = memory_list_start;
+        let mut bytes_to_skip_start = 0;
+        for (index, bytes_to_skip) in bytes_to_skip.iter().enumerate() {
+            if program_counter_value >= memory_list_start as u32 {
+                break;
+            }
+            bytes_to_skip_start = index;
+            disassemble_start = program_counter_value as usize;
+            program_counter_value += *bytes_to_skip as u32;
+            program_counter_value += 1;
+        }
+        program_counter_value = disassemble_start as u32;
+        let mut disassemble_end = 0;
+        for (index, bytes_to_skip) in bytes_to_skip.iter().enumerate() {
+            if program_counter_value >= memory_list_end as u32 {
+                break;
+            }
+            disassemble_end = program_counter_value as usize;
+            program_counter_value += *bytes_to_skip as u32;
+            program_counter_value += 1;
+        }
+        // todo: ok this is cooked because there isn't an instruction per memory location so we need
+        //       to use bytes_to_skip to calculate the indices correctly
+        //       (disassemble_start is correct, memory_list_end is not)
+        let instructions_to_disassemble: Vec<Instruction> = parsed_instructions[disassemble_start..disassemble_end].to_vec();
+
+        let bytes_to_skip_small = bytes_to_skip[bytes_to_skip_start..].to_vec();
+
+        let disassembled_lines = disassembler::disassemble(instructions_to_disassemble, bytes_to_skip_small);
 
         let memory_strings: Vec<Line> = instructions.iter().enumerate().map(|(index, item)| -> Line {
-            let disassembled_line = disassembled_lines[index + memory_list_start].clone();
+            let disassembled_line = disassembled_lines[(index as isize + (memory_list_start as isize - disassemble_start as isize)) as usize].clone();
             if disassembled_line == "".to_string() {
                 format!("0x{:04x?}: ", index + memory_list_start).yellow() + format!("0x{:02x?}", item).green()
             } else {
@@ -251,6 +298,12 @@ impl Widget for &mut App {
 pub fn run(source_file: String) -> io::Result<()> {
     let mut terminal = ratatui::init();
     let app_result = App::default().run(&mut terminal, source_file);
+    ratatui::restore();
+    app_result
+}
+pub fn run_with_symbol_table(binary_file: String, symbol_table_file: String) -> io::Result<()> {
+    let mut terminal = ratatui::init();
+    let app_result = App::default().run(&mut terminal, binary_file);
     ratatui::restore();
     app_result
 }
