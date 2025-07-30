@@ -97,7 +97,7 @@ pub fn disassemble(instructions: Vec<Instruction>, bytes_to_skip: Vec<u8>) -> Ve
                 if let Some(address) = address {
                     result.push(format!("lda {}", address));
                 } else if let Some(immediate) = immediate {
-                    result.push(format!("lda {:02x?}", immediate));
+                    result.push(format!("lda #{:02x?}", immediate));
                 }
             }
             Instruction::StoreAccumulator(address) => {

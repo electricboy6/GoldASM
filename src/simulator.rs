@@ -114,49 +114,41 @@ impl App {
         let mut parsed_instructions: Vec<Instruction> = Vec::with_capacity(0xFFFF / 2);
         let mut bytes_to_skip: Vec<u8> = Vec::with_capacity(0xFFFF / 2);
         let mut program_counter_value: u32 = 0x0200;
+        let mut disassemble_start: u32 = 0;
+        let mut disassemble_end: u32 = 0;
         // parse all instructions
         // todo: handle the cases where it's an invalid instruction (probably return a Result<(Instruction, u8)> instead of just panicking)
         while program_counter_value <= 0xFFFF {
+            // parse the instruction
             let (parsed_instruction, num_extra_bytes) = bin_parser::parse_instruction(&self.cpu.memory, program_counter_value as u16);
-            parsed_instructions.push(parsed_instruction);
-            bytes_to_skip.push(num_extra_bytes);
+
+            // set the disassembly start
+            if program_counter_value >= memory_list_start as u32 && disassemble_start == 0 && program_counter_value >= 0x0200 {
+                disassemble_start = program_counter_value;
+            }
+            // increment the program counter
             program_counter_value += num_extra_bytes as u32;
             program_counter_value += 1;
-        }
-        // create list to disassemble
-        program_counter_value = 0x0000;
-        let mut disassemble_start = memory_list_start;
-        let mut bytes_to_skip_start = 0;
-        for (index, bytes_to_skip) in bytes_to_skip.iter().enumerate() {
-            if program_counter_value >= memory_list_start as u32 {
-                break;
+            // if we're at a valid instruction after memory_list_start and before memory_list_end, add it to the list
+            if program_counter_value >= memory_list_start as u32 && program_counter_value <= memory_list_end as u32 {
+                parsed_instructions.push(parsed_instruction);
+                bytes_to_skip.push(num_extra_bytes);
+                disassemble_end = program_counter_value;
             }
-            bytes_to_skip_start = index;
-            disassemble_start = program_counter_value as usize;
-            program_counter_value += *bytes_to_skip as u32;
-            program_counter_value += 1;
         }
-        program_counter_value = disassemble_start as u32;
-        let mut disassemble_end = 0;
-        for (index, bytes_to_skip) in bytes_to_skip.iter().enumerate() {
-            if program_counter_value >= memory_list_end as u32 {
-                break;
-            }
-            disassemble_end = program_counter_value as usize;
-            program_counter_value += *bytes_to_skip as u32;
-            program_counter_value += 1;
+
+        let mut disassembled_lines = disassembler::disassemble(parsed_instructions, bytes_to_skip);
+
+        // todo: right after the jsr, everything is misaligned and I don't know why.
+        for _ in 0..(disassemble_start as usize - memory_list_start) {
+            disassembled_lines.insert(0, "".to_string());
         }
-        // todo: ok this is cooked because there isn't an instruction per memory location so we need
-        //       to use bytes_to_skip to calculate the indices correctly
-        //       (disassemble_start is correct, memory_list_end is not)
-        let instructions_to_disassemble: Vec<Instruction> = parsed_instructions[disassemble_start..disassemble_end].to_vec();
-
-        let bytes_to_skip_small = bytes_to_skip[bytes_to_skip_start..].to_vec();
-
-        let disassembled_lines = disassembler::disassemble(instructions_to_disassemble, bytes_to_skip_small);
+        for _ in 0..(memory_list_end - disassemble_end as usize) {
+            disassembled_lines.push("".to_string());
+        }
 
         let memory_strings: Vec<Line> = instructions.iter().enumerate().map(|(index, item)| -> Line {
-            let disassembled_line = disassembled_lines[(index as isize + (memory_list_start as isize - disassemble_start as isize)) as usize].clone();
+            let disassembled_line = disassembled_lines[index].clone();
             if disassembled_line == "".to_string() {
                 format!("0x{:04x?}: ", index + memory_list_start).yellow() + format!("0x{:02x?}", item).green()
             } else {
@@ -303,7 +295,7 @@ pub fn run(source_file: String) -> io::Result<()> {
 }
 pub fn run_with_symbol_table(binary_file: String, symbol_table_file: String) -> io::Result<()> {
     let mut terminal = ratatui::init();
-    let app_result = App::default().run(&mut terminal, binary_file);
+    let app_result = App::default().run_with_symbol_table(&mut terminal, binary_file, symbol_table_file);
     ratatui::restore();
     app_result
 }

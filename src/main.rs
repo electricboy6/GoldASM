@@ -51,12 +51,13 @@ fn main() {
         Some(("simulate", sub_matches)) => {
             let target_file = sub_matches.get_one::<String>("sourceFile").unwrap();
             let symbol_table_file = sub_matches.get_one::<String>("symbolTable");
-            if symbol_table_file.is_some() {
-                let content = std::fs::read(symbol_table_file.unwrap()).expect("File not found.");
+            if let Some(symbol_table_file) = symbol_table_file {
+                println!("Simulating binary file {} with symbol table {}", target_file, symbol_table_file);
+                simulator::run_with_symbol_table(target_file.clone(), symbol_table_file.clone()).unwrap();
+            } else {
+                println!("Simulating binary file {}", target_file);
+                simulator::run(target_file.clone()).unwrap();
             }
-
-            println!("Simulating binary file {}", target_file);
-            simulator::run(target_file.clone()).unwrap();
         }
         _ => unreachable!("Subcommand is required"),
     }
