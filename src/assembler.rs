@@ -658,7 +658,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
                 break;
             }
         }
-        if target_label.name == "" {
+        if target_label.name.is_empty() {
             if label_use.name.ends_with("_EndSubroutine") {
                 // I totally didn't spend like half an hour trying to debug it when I just had the
                 // syntax wrong on subroutines in my test file and added this to make it easier to tell
@@ -683,7 +683,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
                 break;
             }
         }
-        if target_pointer.name == "" {
+        if target_pointer.name.is_empty() {
             panic!("Could not find pointer \"{}\"!", pointer_use.pointer.name);
         }
 

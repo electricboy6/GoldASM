@@ -20,14 +20,14 @@ use ratatui::{
     },
     DefaultTerminal, Frame,
 };
-use crate::simulator::executor::CPU;
+use crate::simulator::executor::Processor;
 use crate::disassembler;
 use crate::disassembler::symbols::SymbolTable;
 use crate::simulator::bin_parser::Instruction;
 
 #[derive(Debug, Default)]
 pub struct App {
-    cpu: CPU,
+    cpu: Processor,
     exit: bool,
     binary_path: String,
     symbol_table: Option<SymbolTable>,
@@ -148,11 +148,11 @@ impl App {
         }
 
         let memory_strings: Vec<Line> = instructions.iter().enumerate().map(|(index, item)| -> Line {
-            let disassembled_line = disassembled_lines[index].clone();
-            if disassembled_line == "".to_string() {
-                format!("0x{:04x?}: ", index + memory_list_start).yellow() + format!("0x{:02x?}", item).green()
+            let disassembled_line = disassembled_lines[index].as_str();
+            if disassembled_line.is_empty() {
+                format!("0x{:04x?}: ", index + memory_list_start).yellow() + format!("0x{item:02x?}").green()
             } else {
-                format!("0x{:04x?}: ", index + memory_list_start).yellow() + format!("0x{:02x?}", item).green() + " -> ".light_green() + disassembled_line.light_green()
+                format!("0x{:04x?}: ", index + memory_list_start).yellow() + format!("0x{item:02x?}").green() + " -> ".light_green() + disassembled_line.light_green()
             }
         }).collect();
         
@@ -165,7 +165,7 @@ impl App {
         // stack list
         let stack = self.cpu.memory[0x0100..0x0200].to_vec();
         let stack_strings: Vec<Line> = stack.iter().enumerate().map(|(index, item)| -> Line {
-            format!("0x{:04x?}: ", 0x0100 + index).yellow() + format!("0x{:02x?}", item).green()
+            format!("0x{:04x?}: ", 0x0100 + index).yellow() + format!("0x{item:02x?}").green()
         }).collect();
 
         let stack_list = List::new(stack_strings)
@@ -221,7 +221,7 @@ impl App {
         self.cpu.step();
     }
     fn reset(&mut self) {
-        self.cpu = CPU::default();
+        self.cpu = Processor::default();
         let content = std::fs::read(&self.binary_path).expect("File not found.");
         for (index, byte) in content.iter().enumerate() {
             self.cpu.memory[index] = *byte;
@@ -231,7 +231,7 @@ impl App {
 }
 
 fn push_to_string(string: &mut String, value_to_add: &str) {
-    if string.len() > 0 {
+    if !string.is_empty() {
         string.push_str(&(", ".to_string() + value_to_add));
     } else {
         string.push_str(value_to_add);

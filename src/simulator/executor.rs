@@ -1,8 +1,7 @@
 use crate::simulator::bin_parser;
 use crate::simulator::bin_parser::{Address, Instruction};
 
-
-fn calculate_address(address: Address, cpu: &CPU) -> u16 {
+fn calculate_address(address: Address, cpu: &Processor) -> u16 {
     let real_address;
     if let Some(index) = address.index {
         real_address = address.address.wrapping_add(cpu.registers[index as usize] as u16);
@@ -12,7 +11,7 @@ fn calculate_address(address: Address, cpu: &CPU) -> u16 {
     real_address
 }
 #[derive(Debug)]
-pub struct CPU {
+pub struct Processor {
     pub accumulator: u8,
     pub registers: [u8; 8],
     pub status_register: u8,
@@ -22,14 +21,14 @@ pub struct CPU {
     pub operand1: u8,
     pub operand2: u8,
 }
-impl Default for CPU {
+impl Default for Processor {
     fn default() -> Self {
-        CPU::new()
+        Processor::new()
     }
 }
-impl CPU {
-    pub fn new() -> CPU {
-        let mut cpu = CPU {
+impl Processor {
+    pub fn new() -> Processor {
+        let mut cpu = Processor {
             accumulator: 0,
             registers: [0; 8],
             status_register: 0b010000_00, // accumulator starts at zero, so zero flag is 1
@@ -245,7 +244,7 @@ impl CPU {
                 self.accumulator = self.registers[register as usize];
             }
             Instruction::BranchCarrySet(address) => {
-                if self.status_register & 0b100000_00 == 1 {
+                if self.status_register & 0b100000_00 > 1 {
                     self.program_counter = calculate_address(address, self);
                     return;
                 }
@@ -257,7 +256,7 @@ impl CPU {
                 }
             }
             Instruction::BranchNegative(address) => {
-                if self.status_register & 0b000001_00 == 1 {
+                if self.status_register & 0b000001_00 > 1 {
                     self.program_counter = calculate_address(address, self);
                     return;
                 }
@@ -287,7 +286,7 @@ impl CPU {
                 }
             }
             Instruction::BranchZero(address) => {
-                if self.status_register & 0b010000_00 == 1 {
+                if self.status_register & 0b010000_00 > 1 {
                     self.program_counter = calculate_address(address, self);
                     return;
                 }
@@ -383,29 +382,29 @@ impl CPU {
     /// note: cannot update the carry, that must be done manually
     fn update_status_one_operand(&mut self, other_operand: u8) {
         if self.accumulator > other_operand {
-            self.status_register = self.status_register | 0b001000_00;
+            self.status_register |= 0b001000_00;
         } else {
-            self.status_register = self.status_register & 0b110111_00;
+            self.status_register &= 0b110111_00;
         }
         if self.accumulator < other_operand {
-            self.status_register = self.status_register | 0b000100_00;
+            self.status_register |= 0b000100_00;
         } else {
-            self.status_register = self.status_register & 0b111011_00;
+            self.status_register &= 0b111011_00;
         }
         if self.accumulator == other_operand {
-            self.status_register = self.status_register | 0b000010_00;
+            self.status_register |= 0b000010_00;
         } else {
-            self.status_register = self.status_register & 0b111101_00;
+            self.status_register &= 0b111101_00;
         }
         if self.accumulator == 0 {
-            self.status_register = self.status_register | 0b010000_00;
+            self.status_register |= 0b010000_00;
         } else {
-            self.status_register = self.status_register & 0b101111_00;
+            self.status_register &= 0b101111_00;
         }
         if self.accumulator & 0b1000_0000 > 0 {
-            self.status_register = self.status_register | 0b000001_00;
+            self.status_register |= 0b000001_00;
         } else {
-            self.status_register = self.status_register & 0b111110_00;
+            self.status_register &= 0b111110_00;
         }
         self.operand1 = other_operand;
         self.operand2 = 0x00;
@@ -413,16 +412,16 @@ impl CPU {
     /// note: cannot update the carry, that must be done manually
     fn update_status_no_operands(&mut self) {
         // not greater than, not less than, not equal to (since there's no other operand)
-        self.status_register = self.status_register & 0b110001_00;
+        self.status_register &= 0b110001_00;
         if self.accumulator == 0 {
-            self.status_register = self.status_register | 0b010000_00;
+            self.status_register |= 0b010000_00;
         } else {
-            self.status_register = self.status_register & 0b101111_00;
+            self.status_register &= 0b101111_00;
         }
         if self.accumulator & 0b1000_0000 > 0 {
-            self.status_register = self.status_register | 0b000001_00;
+            self.status_register |= 0b000001_00;
         } else {
-            self.status_register = self.status_register & 0b111110_00;
+            self.status_register &= 0b111110_00;
         }
         self.operand1 = 0x00;
         self.operand2 = 0x00;

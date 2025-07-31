@@ -36,6 +36,7 @@ impl Address {
 impl Display for Address {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         if self.address <= 0x00ff {
+            // zero page
             if let Some(index) = self.index {
                 // zero page indexed
                 write!(f, "${:02x}, {:02x}", self.address, index)
@@ -44,6 +45,7 @@ impl Display for Address {
                 write!(f, "%{:02x}", self.address)
             }
         } else {
+            // not zero page
             if let Some(index) = self.index {
                 // indexed
                 write!(f, "${:04x}, {:02x}", self.address, index)

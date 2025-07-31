@@ -162,7 +162,7 @@ pub fn disassemble(instructions: Vec<Instruction>, bytes_to_skip: Vec<u8>) -> Ve
     }
 
     for (index, window) in result.clone().windows(2).enumerate() {
-        if let Some(first) = window.get(0) {
+        if let Some(first) = window.first() {
             let first = first.as_str();
             if let Some(second) = window.get(1) {
                 let second = second.as_str();
@@ -179,5 +179,5 @@ pub fn disassemble(instructions: Vec<Instruction>, bytes_to_skip: Vec<u8>) -> Ve
 }
 
 fn parse_immediate(immediate: u8) -> String {
-    format!("{:02x?}", immediate)
+    format!("{immediate:02x?}")
 }

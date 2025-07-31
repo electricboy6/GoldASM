@@ -1,3 +1,5 @@
+#![allow(clippy::unusual_byte_groupings, clippy::manual_split_once, clippy::needless_splitn)]
+
 mod asm_parser;
 mod assembler;
 mod simulator;
@@ -52,10 +54,10 @@ fn main() {
             let target_file = sub_matches.get_one::<String>("sourceFile").unwrap();
             let symbol_table_file = sub_matches.get_one::<String>("symbolTable");
             if let Some(symbol_table_file) = symbol_table_file {
-                println!("Simulating binary file {} with symbol table {}", target_file, symbol_table_file);
+                println!("Simulating binary file {target_file} with symbol table {symbol_table_file}");
                 simulator::run_with_symbol_table(target_file.clone(), symbol_table_file.clone()).unwrap();
             } else {
-                println!("Simulating binary file {}", target_file);
+                println!("Simulating binary file {target_file}");
                 simulator::run(target_file.clone()).unwrap();
             }
         }

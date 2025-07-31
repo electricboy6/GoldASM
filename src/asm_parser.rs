@@ -322,7 +322,7 @@ pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
     for raw_line in content.lines() {
         // strip out leading and trailing whitespace, as well as comments
         let line = raw_line.splitn(2, "//").nth(0).unwrap_or("").trim();
-        if line == "" {
+        if line.is_empty() {
             continue;
         }
         
