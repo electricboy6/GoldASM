@@ -62,9 +62,9 @@ impl Processor {
                     let carry = addition_result & 0b0000_0001_0000_0000;
                     self.accumulator = (addition_result & 0b0000_0000_1111_1111) as u8;
                     if carry > 0 {
-                        self.status_register = self.status_register | 0b100000_00
+                        self.status_register |= 0b100000_00
                     } else {
-                        self.status_register = self.status_register & 0b011111_00
+                        self.status_register &= 0b011111_00
                     }
                     self.update_status_two_operands(self.accumulator, register_value as u8);
                 } else if let Some((register1, register2)) = two_register {
@@ -75,9 +75,9 @@ impl Processor {
                     let carry = addition_result & 0b0000_0001_0000_0000;
                     self.accumulator = (addition_result & 0b0000_0000_1111_1111) as u8;
                     if carry > 0 {
-                        self.status_register = self.status_register | 0b100000_00
+                        self.status_register |= 0b100000_00
                     } else {
-                        self.status_register = self.status_register & 0b011111_00
+                        self.status_register &= 0b011111_00
                     }
                     self.update_status_two_operands(register1_value as u8, register2_value as u8);
                 }
@@ -91,9 +91,9 @@ impl Processor {
                     self.accumulator = result as u8;
                     
                     if carry_out {
-                        self.status_register = self.status_register | 0b100000_00
+                        self.status_register |= 0b100000_00
                     } else {
-                        self.status_register = self.status_register & 0b011111_00
+                        self.status_register &= 0b011111_00
                     }
 
                     self.update_status_two_operands(self.accumulator, self.registers[register as usize]);
@@ -105,9 +105,9 @@ impl Processor {
                     self.accumulator = result as u8;
                     
                     if carry_out {
-                        self.status_register = self.status_register | 0b100000_00
+                        self.status_register |= 0b100000_00
                     } else {
-                        self.status_register = self.status_register & 0b011111_00
+                        self.status_register &= 0b011111_00
                     }
                     
                     self.update_status_two_operands((register1_value & 0b0000_0000_1111_1111) as u8, register2_value);
@@ -115,7 +115,7 @@ impl Processor {
             }
             Instruction::Xor(one_register, two_register) => {
                 if let Some(register) = one_register {
-                    self.accumulator = self.accumulator ^ self.registers[register as usize];
+                    self.accumulator ^= self.registers[register as usize];
                     self.update_status_two_operands(self.accumulator, self.registers[register as usize]);
                 } else if let Some((register1, register2)) = two_register {
                     self.accumulator = self.registers[register1 as usize] ^ self.registers[register2 as usize];
@@ -133,7 +133,7 @@ impl Processor {
             }
             Instruction::And(one_register, two_register) => {
                 if let Some(register) = one_register {
-                    self.accumulator = self.accumulator & self.registers[register as usize];
+                    self.accumulator &= self.registers[register as usize];
                     self.update_status_two_operands(self.accumulator, self.registers[register as usize]);
                 } else if let Some((register1, register2)) = two_register {
                     self.accumulator = self.registers[register1 as usize] & self.registers[register2 as usize];
@@ -151,7 +151,7 @@ impl Processor {
             }
             Instruction::Or(one_register, two_register) => {
                 if let Some(register) = one_register {
-                    self.accumulator = self.accumulator | self.registers[register as usize];
+                    self.accumulator |= self.registers[register as usize];
                     self.update_status_two_operands(self.accumulator, self.registers[register as usize]);
                 } else if let Some((register1, register2)) = two_register {
                     self.accumulator = self.registers[register1 as usize] | self.registers[register2 as usize];
@@ -183,15 +183,15 @@ impl Processor {
                 let carry_out = self.accumulator & 0b0000_0001;
                 let carry_in = self.status_register & 0b100000_00;
                 
-                self.accumulator = self.accumulator >> 1;
+                self.accumulator >>= 1;
                 if carry_in > 1 {
-                    self.accumulator = self.accumulator | 0b1000_0000;
+                    self.accumulator |= 0b1000_0000;
                 }
                 
                 if carry_out > 0 {
-                    self.status_register = self.status_register | 0b100000_00;
+                    self.status_register |= 0b100000_00;
                 } else {
-                    self.status_register = self.status_register & 0b011111_00;
+                    self.status_register &= 0b011111_00;
                 }
                 
                 self.update_status_no_operands();
@@ -203,23 +203,23 @@ impl Processor {
                 
                 self.accumulator = (shifted_result & 0b0000_0000_1111_1111) as u8;
                 if carry_in > 0 {
-                    self.accumulator = self.accumulator | 0b0000_0001;
+                    self.accumulator |= 0b0000_0001;
                 }
                 
                 if carry_out > 0 {
-                    self.status_register = self.status_register | 0b100000_00;
+                    self.status_register |= 0b100000_00;
                 } else {
-                    self.status_register = self.status_register & 0b011111_00;
+                    self.status_register &= 0b011111_00;
                 }
                 
                 self.update_status_no_operands();
             }
             Instruction::Noop => {}
             Instruction::SetCarry => {
-                self.status_register = self.status_register | 0b100000_00
+                self.status_register |= 0b100000_00
             }
             Instruction::ClearCarry => {
-                self.status_register = self.status_register & 0b011111_00
+                self.status_register &= 0b011111_00
             }
             Instruction::PushRegisterToStack(register) => {
                 self.push_stack(self.registers[register as usize]);
@@ -346,35 +346,35 @@ impl Processor {
     }
     fn pop_stack(&mut self) -> u8 {
         self.stack_pointer = self.stack_pointer.wrapping_sub(1);
-        let value = self.memory[(self.stack_pointer as u16 + 0x0100) as usize];
-        value
+        
+        self.memory[(self.stack_pointer as u16 + 0x0100) as usize]
     }
     /// note: cannot update the carry, that must be done manually
     fn update_status_two_operands(&mut self, operand1: u8, operand2: u8) {
         if operand1 > operand2 {
-            self.status_register = self.status_register | 0b001000_00;
+            self.status_register |= 0b001000_00;
         } else {
-            self.status_register = self.status_register & 0b110111_00;
+            self.status_register &= 0b110111_00;
         }
         if operand1 < operand2 {
-            self.status_register = self.status_register | 0b000100_00;
+            self.status_register |= 0b000100_00;
         } else {
-            self.status_register = self.status_register & 0b111011_00;
+            self.status_register &= 0b111011_00;
         }
         if operand1 == operand2 {
-            self.status_register = self.status_register | 0b000010_00;
+            self.status_register |= 0b000010_00;
         } else {
-            self.status_register = self.status_register & 0b111101_00;
+            self.status_register &= 0b111101_00;
         }
         if self.accumulator == 0 {
-            self.status_register = self.status_register | 0b010000_00;
+            self.status_register |= 0b010000_00;
         } else {
-            self.status_register = self.status_register & 0b101111_00;
+            self.status_register &= 0b101111_00;
         }
         if self.accumulator & 0b1000_0000 > 0 {
-            self.status_register = self.status_register | 0b000001_00;
+            self.status_register |= 0b000001_00;
         } else {
-            self.status_register = self.status_register & 0b111110_00;
+            self.status_register &= 0b111110_00;
         }
         self.operand1 = operand1;
         self.operand2 = operand2;

@@ -12,16 +12,16 @@ pub fn disassemble(instructions: Vec<Instruction>, bytes_to_skip: Vec<u8>) -> Ve
             }
             Instruction::Add(one_operand, two_operands) => {
                 if let Some(one_operand) = one_operand {
-                    result.push(format!("add {:02x?}", one_operand));
+                    result.push(format!("add {one_operand:02x?}"));
                 } else if let Some((operand1, operand2)) = two_operands {
-                    result.push(format!("add {:02x?}, {:02x?}", operand1, operand2));
+                    result.push(format!("add {operand1:02x?}, {operand2:02x?}"));
                 }
             }
             Instruction::Subtract(one_operand, two_operands) => {
                 if let Some(one_operand) = one_operand {
-                    result.push(format!("sub {:02x?}", one_operand));
+                    result.push(format!("sub {one_operand:02x?}"));
                 } else if let Some((operand1, operand2)) = two_operands {
-                    result.push(format!("sub {:02x?}, {:02x?}", operand1, operand2));
+                    result.push(format!("sub {operand1:02x?}, {operand2:02x?}"));
                 }
             }
             Instruction::SetCarry => {
@@ -32,44 +32,44 @@ pub fn disassemble(instructions: Vec<Instruction>, bytes_to_skip: Vec<u8>) -> Ve
             }
             Instruction::Xor(one_operand, two_operands) => {
                 if let Some(one_operand) = one_operand {
-                    result.push(format!("xor {:02x?}", one_operand));
+                    result.push(format!("xor {one_operand:02x?}"));
                 } else if let Some((operand1, operand2)) = two_operands {
-                    result.push(format!("xor {:02x?}, {:02x?}", operand1, operand2));
+                    result.push(format!("xor {operand1:02x?}, {operand2:02x?}"));
                 }
             }
             Instruction::Xnor(one_operand, two_operands) => {
                 if let Some(one_operand) = one_operand {
-                    result.push(format!("xnor {:02x?}", one_operand));
+                    result.push(format!("xnor {one_operand:02x?}"));
                 } else if let Some((operand1, operand2)) = two_operands {
-                    result.push(format!("xnor {:02x?}, {:02x?}", operand1, operand2));
+                    result.push(format!("xnor {operand1:02x?}, {operand2:02x?}"));
                 }
             }
             Instruction::Or(one_operand, two_operands) => {
                 if let Some(one_operand) = one_operand {
-                    result.push(format!("or {:02x?}", one_operand));
+                    result.push(format!("or {one_operand:02x?}"));
                 } else if let Some((operand1, operand2)) = two_operands {
-                    result.push(format!("or {:02x?}, {:02x?}", operand1, operand2));
+                    result.push(format!("or {operand1:02x?}, {operand2:02x?}"));
                 }
             }
             Instruction::Nor(one_operand, two_operands) => {
                 if let Some(one_operand) = one_operand {
-                    result.push(format!("nor {:02x?}", one_operand));
+                    result.push(format!("nor {one_operand:02x?}"));
                 } else if let Some((operand1, operand2)) = two_operands {
-                    result.push(format!("nor {:02x?}, {:02x?}", operand1, operand2));
+                    result.push(format!("nor {operand1:02x?}, {operand2:02x?}"));
                 }
             }
             Instruction::And(one_operand, two_operands) => {
                 if let Some(one_operand) = one_operand {
-                    result.push(format!("and {:02x?}", one_operand));
+                    result.push(format!("and {one_operand:02x?}"));
                 } else if let Some((operand1, operand2)) = two_operands {
-                    result.push(format!("and {:02x?}, {:02x?}", operand1, operand2));
+                    result.push(format!("and {operand1:02x?}, {operand2:02x?}"));
                 }
             }
             Instruction::Nand(one_operand, two_operands) => {
                 if let Some(one_operand) = one_operand {
-                    result.push(format!("nand {:02x?}", one_operand));
+                    result.push(format!("nand {one_operand:02x?}"));
                 } else if let Some((operand1, operand2)) = two_operands {
-                    result.push(format!("nand {:02x?}, {:02x?}", operand1, operand2));
+                    result.push(format!("nand {operand1:02x?}, {operand2:02x?}"));
                 }
             }
             Instruction::Not => {
@@ -88,59 +88,59 @@ pub fn disassemble(instructions: Vec<Instruction>, bytes_to_skip: Vec<u8>) -> Ve
                 result.push("shl".to_string());
             }
             Instruction::PushRegisterToStack(register) => {
-                result.push(format!("phr {:02x?}", register));
+                result.push(format!("phr {register:02x?}"));
             }
             Instruction::PopRegisterFromStack(register) => {
-                result.push(format!("plr {:02x?}", register));
+                result.push(format!("plr {register:02x?}"));
             }
             Instruction::LoadAccumulator(address, immediate) => {
                 if let Some(address) = address {
-                    result.push(format!("lda {}", address));
+                    result.push(format!("lda {address}"));
                 } else if let Some(immediate) = immediate {
-                    result.push(format!("lda #{:02x?}", immediate));
+                    result.push(format!("lda #{immediate:02x?}"));
                 }
             }
             Instruction::StoreAccumulator(address) => {
-                result.push(format!("sta {}", address));
+                result.push(format!("sta {address}"));
             }
             Instruction::CopyAccumulatorToRegister(register) => {
-                result.push(format!("cpa {:02x?}", register));
+                result.push(format!("cpa {register:02x?}"));
             }
             Instruction::CopyRegisterToAccumulator(register) => {
-                result.push(format!("cpr {:02x?}", register));
+                result.push(format!("cpr {register:02x?}"));
             }
             Instruction::BranchCarrySet(address) => {
-                result.push(format!("bcs {}", address));
+                result.push(format!("bcs {address}"));
             }
             Instruction::BranchCarryClear(address) => {
-                result.push(format!("bcc {}", address));
+                result.push(format!("bcc {address}"));
             }
             Instruction::BranchNegative(address) => {
-                result.push(format!("bn {}", address));
+                result.push(format!("bn {address}"));
             }
             Instruction::BranchPositive(address) => {
-                result.push(format!("bp {}", address));
+                result.push(format!("bp {address}"));
             }
             Instruction::BranchEqual(register, address) => {
-                result.push(format!("beq {:02x?}, {}", register, address));
+                result.push(format!("beq {register:02x?}, {address}"));
             }
             Instruction::BranchNotEqual(register, address) => {
-                result.push(format!("bne {:02x?}, {}", register, address));
+                result.push(format!("bne {register:02x?}, {address}"));
             }
             Instruction::BranchZero(address) => {
-                result.push(format!("bz {}", address));
+                result.push(format!("bz {address}"));
             }
             Instruction::BranchNotZero(address) => {
-                result.push(format!("bnz {}", address));
+                result.push(format!("bnz {address}"));
             }
             Instruction::BranchGreater(register, address) => {
-                result.push(format!("bg {:02x?}, {}", register, address));
+                result.push(format!("bg {register:02x?}, {address}"));
             }
             Instruction::BranchLess(register, address) => {
-                result.push(format!("bl {:02x?}, {}", register, address));
+                result.push(format!("bl {register:02x?}, {address}"));
             }
             Instruction::Jump(address) => {
-                result.push(format!("jmp {}", address));
+                result.push(format!("jmp {address}"));
             }
             Instruction::PushProgramCounter => {
                 result.push("phpc".to_string());

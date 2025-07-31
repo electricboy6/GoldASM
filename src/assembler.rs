@@ -743,7 +743,7 @@ pub fn write(binary: &Vec<u8>, directory: &str, filename: &str) {
         return;
     }
     let mut file = file.unwrap();
-    file.write_all(binary).expect(&format!("Unable to write to file \"{filename}\" in directory \"{directory}\"!"));
-    file.sync_all().expect(&format!("Unable to write to file \"{filename}\" in directory \"{directory}\"!"));
+    file.write_all(binary).unwrap_or_else(|_| panic!("Unable to write to file \"{filename}\" in directory \"{directory}\"!"));
+    file.sync_all().unwrap_or_else(|_| panic!("Unable to write to file \"{filename}\" in directory \"{directory}\"!"));
     println!("Successfully wrote binary to file \"{filename}\"");
 }
