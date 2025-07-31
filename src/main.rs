@@ -1,5 +1,5 @@
 #![allow(clippy::unusual_byte_groupings, clippy::manual_split_once, clippy::needless_splitn)]
-
+// annoying clippy lints that I don't care about
 mod asm_parser;
 mod assembler;
 mod simulator;

@@ -34,6 +34,7 @@ pub struct App {
     instruction_state: ListState,
     stack_state: ListState,
     auto_run: bool,
+    serial_buffer: Vec<char>
 }
 impl App {
 
@@ -82,7 +83,7 @@ impl App {
         self.stack_state.select(Some(self.cpu.stack_pointer as usize));
         
         // create outer box
-        let title = Line::from(" GoldISA Simulator ".bold());
+        let title = Line::from(" GoldCore Simulator ".bold());
         let instructions = Line::from(vec![
             " Start Auto Run ".into(),
             "<Up>".blue().bold(),
@@ -101,8 +102,8 @@ impl App {
             .border_set(border::THICK);
         
         // make layout of stuff
-        let [status_area, instruction_area, stack_area] =
-            Layout::horizontal([Constraint::Fill(6), Constraint::Fill(2), Constraint::Fill(2)]).areas(outer_block.inner(frame.area()));
+        let [status_area, io_area, instruction_area, stack_area] =
+            Layout::horizontal([Constraint::Fill(3), Constraint::Fill(3), Constraint::Fill(2), Constraint::Fill(2)]).areas(outer_block.inner(frame.area()));
         
         // instructions list
         let memory_list_start = self.cpu.program_counter.saturating_sub(16) as usize;
@@ -110,6 +111,7 @@ impl App {
 
         let instructions = self.cpu.memory[memory_list_start..memory_list_end].to_vec();
 
+        // ---------------------------- LIVE DISASSEMBLY ----------------------------
         // create variables
         let mut parsed_instructions: Vec<Instruction> = Vec::with_capacity(0xFFFF / 2);
         let mut bytes_to_skip: Vec<u8> = Vec::with_capacity(0xFFFF / 2);
@@ -118,7 +120,7 @@ impl App {
         let mut disassemble_end: u32 = 0;
         // parse all instructions
         // todo: handle the cases where it's an invalid instruction (probably return a Result<(Instruction, u8)> instead of just panicking)
-        while program_counter_value <= 0xFFFF {
+        while program_counter_value < 0xFF00 {
             // parse the instruction
             let (parsed_instruction, num_extra_bytes) = bin_parser::parse_instruction(&self.cpu.memory, program_counter_value as u16);
 
@@ -140,8 +142,10 @@ impl App {
         let mut disassembled_lines = disassembler::disassemble(parsed_instructions, bytes_to_skip);
 
         // todo: right after the jsr, everything is misaligned and I don't know why.
-        for _ in 0..(disassemble_start as usize - memory_list_start) {
-            disassembled_lines.insert(0, "".to_string());
+        if (memory_list_end - memory_list_start) > disassembled_lines.len()  {
+            for _ in 0..(disassemble_start as usize - memory_list_start) {
+                disassembled_lines.insert(0, "".to_string());
+            }
         }
         for _ in 0..(memory_list_end - disassemble_end as usize) {
             disassembled_lines.push("".to_string());
@@ -155,6 +159,7 @@ impl App {
                 format!("0x{:04x?}: ", index + memory_list_start).yellow() + format!("0x{item:02x?}").green() + " -> ".light_green() + disassembled_line.light_green()
             }
         }).collect();
+        // ---------------------------- END LIVE DISASSEMBLY ----------------------------
         
         let memory_list = List::new(memory_strings)
             .block(Block::bordered().title("Memory"))
@@ -172,9 +177,18 @@ impl App {
             .block(Block::bordered().title("Stack"))
             .highlight_symbol("-> ")
             .repeat_highlight_symbol(false);
+
+        // --------------------- IO Block ---------------------
+        let serial_text = self.serial_buffer.iter().collect::<String>();
+        let io_text = Text::from(serial_text.white());
+        let io_block = Block::bordered()
+            .title("I/O");
+        let io_paragraph = Paragraph::new(io_text).block(io_block);
+        // --------------------- End IO Block ---------------------
         
         // render everything
         frame.render_widget(outer_block, frame.area());
+        frame.render_widget(io_paragraph, io_area);
         frame.render_stateful_widget(memory_list, instruction_area, &mut self.instruction_state);
         frame.render_stateful_widget(stack_list, stack_area, &mut self.stack_state);
         frame.render_widget(self, status_area);
@@ -219,6 +233,11 @@ impl App {
     }
     fn step(&mut self) {
         self.cpu.step();
+        if self.cpu.memory[0xFF01] > 0 {
+            // new data
+            self.cpu.memory[0xFF01] = 0;
+            self.serial_buffer.push(self.cpu.memory[0xFF00] as char);
+        }
     }
     fn reset(&mut self) {
         self.cpu = Processor::default();
@@ -227,6 +246,7 @@ impl App {
             self.cpu.memory[index] = *byte;
         }
         self.cpu.reset();
+        self.serial_buffer.clear();
     }
 }
 

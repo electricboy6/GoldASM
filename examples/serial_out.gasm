@@ -1,0 +1,37 @@
+#define OUT_BYTE %FF00
+#define NEW_DATA %FF01
+#define BLOCK %FF02
+#define BUSY %FF03
+
+// todo: if we don't actually ever end up busy (likely), then get rid of the busy handling code
+sr SEND_BYTE:
+    // we use registers 0 and 1, so back them up
+    phr 00
+    phr 01
+    cpa 01
+    phr 01
+
+    // save the value we're sending
+    cpa 00
+
+    // busy loop if the interface is busy
+    lda #00
+    cpa 01
+SPINLOCK:
+    lda %*BUSY
+    bne 01, ~SPINLOCK
+    // no longer busy, so get ready to send
+    // load the byte to send
+    cpr 00
+    sta %*OUT_BYTE
+    // add it to the fifo
+    lda #01
+    sta %*NEW_DATA
+    // we're done
+
+    // restore the registers
+    plr 01
+    cpr 01
+    plr 01
+    plr 00
+    rts SEND_BYTE

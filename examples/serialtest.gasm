@@ -1,0 +1,38 @@
+#include serial_out.gasm
+
+// code start
+.org %0200
+// hello
+lda #48
+jsr ~serial_out.SEND_BYTE
+lda #65
+jsr ~serial_out.SEND_BYTE
+lda #6c
+jsr ~serial_out.SEND_BYTE
+jsr ~serial_out.SEND_BYTE
+lda #6f
+jsr ~serial_out.SEND_BYTE
+// newline
+lda #0D
+jsr ~serial_out.SEND_BYTE
+lda #0A
+jsr ~serial_out.SEND_BYTE
+// world
+lda #57
+jsr ~serial_out.SEND_BYTE
+lda #6f
+jsr ~serial_out.SEND_BYTE
+lda #72
+jsr ~serial_out.SEND_BYTE
+lda #6c
+jsr ~serial_out.SEND_BYTE
+lda #64
+jsr ~serial_out.SEND_BYTE
+
+// reset vector
+.org %FFFC
+.word #02
+.word #00
+
+// includes
+.org
