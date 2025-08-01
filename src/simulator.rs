@@ -120,23 +120,34 @@ impl App {
         let mut disassemble_end: u32 = 0;
         // parse all instructions
         // todo: handle the cases where it's an invalid instruction (probably return a Result<(Instruction, u8)> instead of just panicking)
-        while program_counter_value < 0xFF00 {
+        while program_counter_value < 0xFF00.max(memory_list_end as u32) {
             // parse the instruction
-            let (parsed_instruction, num_extra_bytes) = bin_parser::parse_instruction(&self.cpu.memory, program_counter_value as u16);
+            let instruction = bin_parser::parse_instruction(&self.cpu.memory, program_counter_value as u16);
+            if instruction.is_ok() {
+                let (parsed_instruction, num_extra_bytes) = instruction.unwrap();
 
-            // set the disassembly start
-            if program_counter_value >= memory_list_start as u32 && disassemble_start == 0 && program_counter_value >= 0x0200 {
-                disassemble_start = program_counter_value;
+                // set the disassembly start
+                if program_counter_value >= memory_list_start as u32 && disassemble_start == 0 && program_counter_value >= 0x0200 {
+                    disassemble_start = program_counter_value;
+                }
+                // increment the program counter
+                program_counter_value += num_extra_bytes as u32;
+                program_counter_value += 1;
+                // if we're at a valid instruction after memory_list_start and before memory_list_end, add it to the list
+                if program_counter_value >= memory_list_start as u32 && program_counter_value <= memory_list_end as u32 {
+                    parsed_instructions.push(parsed_instruction);
+                    bytes_to_skip.push(num_extra_bytes);
+                    disassemble_end = program_counter_value;
+                }
+            } else {
+                program_counter_value += 1;
             }
-            // increment the program counter
-            program_counter_value += num_extra_bytes as u32;
-            program_counter_value += 1;
-            // if we're at a valid instruction after memory_list_start and before memory_list_end, add it to the list
-            if program_counter_value >= memory_list_start as u32 && program_counter_value <= memory_list_end as u32 {
-                parsed_instructions.push(parsed_instruction);
-                bytes_to_skip.push(num_extra_bytes);
-                disassemble_end = program_counter_value;
-            }
+        }
+        if disassemble_start < memory_list_start as u32 {
+            disassemble_start = memory_list_start as u32;
+        }
+        if disassemble_end > memory_list_end as u32 {
+            disassemble_end = memory_list_end as u32;
         }
 
         let mut disassembled_lines = disassembler::disassemble(parsed_instructions, bytes_to_skip);
