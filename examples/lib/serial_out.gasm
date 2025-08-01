@@ -3,6 +3,11 @@
 #define BLOCK %FF02
 #define BUSY %FF03
 
+sr SEND_NUMBER:
+    phr 00
+    phr 01
+
+
 // todo: if we don't actually ever end up busy (likely), then get rid of the busy handling code
 sr SEND_BYTE:
     // we use registers 0 and 1, so back them up

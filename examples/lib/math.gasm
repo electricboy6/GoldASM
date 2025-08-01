@@ -1,0 +1,8 @@
+// doesn't care about input sizes, but beware of integer overflow
+sr MULTIPLY:
+    // todo: write it
+    rts ~MULTIPLY
+
+sr DIVIDE:
+    // todo: write it
+    rts ~DIVIDE

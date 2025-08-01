@@ -10,9 +10,8 @@ IO.
 ### IO
 Any blocks of IO not defined are unused (so far)
 #### Serial
-``FF00-FF1F`` are the serial interface.
-*Note*: in the simulator, only tx is implemented
-``FF00-FF0F`` are used for tx, while ``FF10-FF1F`` are used for rx.
+``FF00-FF10`` is reserved for the serial interface.
+``FF00-FF03`` are used for tx, while ``FF08-FF09`` are used for rx.
 ##### Tx
 ``FF00`` is the outgoing byte. ``FF01`` is the new data flag (tells the serial interface to start sending),
 ``FF02`` is the block flag (tells the serial interface to stop sending), and ``FF03`` is the busy flag. All inputs are
@@ -20,4 +19,4 @@ write-only except for the busy flag, which is read-only. The data on the outgoin
 cycle where the new data flag is high (the new data flag is reset after the data is written to the FIFO), and the busy
 flag will go high when the FIFO is full.
 ##### Rx
-idk I don't need to worry about it yet
+`FF08` is the incoming byte. ``FF09`` is the new data flag (must be manually reset).

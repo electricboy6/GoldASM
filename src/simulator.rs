@@ -109,7 +109,7 @@ impl App {
         let memory_list_start = self.cpu.program_counter.saturating_sub(16) as usize;
         let memory_list_end = self.cpu.program_counter.saturating_add(16) as usize;
 
-        let instructions = self.cpu.memory[memory_list_start..memory_list_end].to_vec();
+        let instructions = self.cpu.memory[memory_list_start..=memory_list_end].to_vec();
 
         // ---------------------------- LIVE DISASSEMBLY ----------------------------
         // create variables
@@ -118,8 +118,7 @@ impl App {
         let mut program_counter_value: u32 = 0x0200;
         let mut disassemble_start: u32 = 0;
         let mut disassemble_end: u32 = 0;
-        // parse all instructions
-        // todo: handle the cases where it's an invalid instruction (probably return a Result<(Instruction, u8)> instead of just panicking)
+        // parse instructions
         while program_counter_value < 0xFF00.max(memory_list_end as u32) {
             // parse the instruction
             let instruction = bin_parser::parse_instruction(&self.cpu.memory, program_counter_value as u16);
@@ -127,7 +126,7 @@ impl App {
                 let (parsed_instruction, num_extra_bytes) = instruction.unwrap();
 
                 // set the disassembly start
-                if program_counter_value >= memory_list_start as u32 && disassemble_start == 0 && program_counter_value >= 0x0200 {
+                if program_counter_value >= memory_list_start as u32 && disassemble_start == 0 {
                     disassemble_start = program_counter_value;
                 }
                 // increment the program counter
@@ -153,12 +152,13 @@ impl App {
         let mut disassembled_lines = disassembler::disassemble(parsed_instructions, bytes_to_skip);
 
         // todo: right after the jsr, everything is misaligned and I don't know why.
+        // everything's decoding properly and the disassembled lines are in the right spot, so maybe the memory index is screwed up?
         if (memory_list_end - memory_list_start) > disassembled_lines.len()  {
             for _ in 0..(disassemble_start as usize - memory_list_start) {
                 disassembled_lines.insert(0, "".to_string());
             }
         }
-        for _ in 0..(memory_list_end - disassemble_end as usize) {
+        for _ in 0..(instructions.len() - (disassemble_end - disassemble_start) as usize) {
             disassembled_lines.push("".to_string());
         }
 
@@ -175,7 +175,7 @@ impl App {
         let memory_list = List::new(memory_strings)
             .block(Block::bordered().title("Memory"))
             .highlight_symbol("-> ")
-            .scroll_padding(128)
+            .scroll_padding(32)
             .repeat_highlight_symbol(false);
         
         // stack list

@@ -1,0 +1,29 @@
+#include lib/serial_out.gasm
+
+.org #0200
+lda #FF
+cpa 07
+// previous term
+lda #00
+cpa 00
+// constant to add to numbers to convert to ascii
+lda #30
+cpa 02
+lda #01
+LOOP:
+    add 00
+    cpa 01
+    add
+    bne 07, ~LOOP
+
+// program is over, just loop forever
+.org %FFF8
+END:
+    noop
+    jmp ~END
+// reset vector
+.org %FFFC
+.word #02
+.word #00
+// dependencies
+.org

@@ -101,278 +101,278 @@ pub enum Instruction {
 pub fn parse_instruction(memory: &[u8; 65536], program_counter: u16) -> Result<(Instruction, u8), Box<dyn std::error::Error>> {
     let program_counter = program_counter as usize;
     match memory[program_counter] {
-        0x00 => (Instruction::Noop, 0),
+        0x00 => Ok((Instruction::Noop, 0)),
         0x01 => {
             let parameter = memory[program_counter + 1];
-            (Instruction::Add(Some(parameter), None), 1)
+            Ok((Instruction::Add(Some(parameter), None), 1))
         }
         0x02 => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
-            (Instruction::Add(None, Some((parameter1, parameter2))), 2)
+            Ok((Instruction::Add(None, Some((parameter1, parameter2))), 2))
         }
         0x03 => {
             let parameter = memory[program_counter + 1];
-            (Instruction::Subtract(Some(parameter), None), 1)
+            Ok((Instruction::Subtract(Some(parameter), None), 1))
         }
         0x04 => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
-            (Instruction::Subtract(None, Some((parameter1, parameter2))), 2)
+            Ok((Instruction::Subtract(None, Some((parameter1, parameter2))), 2))
         }
-        0x05 => (Instruction::SetCarry, 0),
-        0x06 => (Instruction::ClearCarry, 0),
+        0x05 => Ok((Instruction::SetCarry, 0)),
+        0x06 => Ok((Instruction::ClearCarry, 0)),
         0x07 => {
             let parameter = memory[program_counter + 1];
-            (Instruction::Xor(Some(parameter), None), 1)
+            Ok((Instruction::Xor(Some(parameter), None), 1))
         }
         0x08 => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
-            (Instruction::Xor(None, Some((parameter1, parameter2))), 2)
+            Ok((Instruction::Xor(None, Some((parameter1, parameter2))), 2))
         }
         0x09 => {
             let parameter = memory[program_counter + 1];
-            (Instruction::Xnor(Some(parameter), None), 1)
+            Ok((Instruction::Xnor(Some(parameter), None), 1))
         }
         0x0A => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
-            (Instruction::Xnor(None, Some((parameter1, parameter2))), 2)
+            Ok((Instruction::Xnor(None, Some((parameter1, parameter2))), 2))
         }
         0x0B => {
             let parameter = memory[program_counter + 1];
-            (Instruction::Or(Some(parameter), None), 1)
+            Ok((Instruction::Or(Some(parameter), None), 1))
         }
         0x0C => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
-            (Instruction::Or(None, Some((parameter1, parameter2))), 2)
+            Ok((Instruction::Or(None, Some((parameter1, parameter2))), 2))
         }
         0x0D => {
             let parameter = memory[program_counter + 1];
-            (Instruction::Nor(Some(parameter), None), 1)
+            Ok((Instruction::Nor(Some(parameter), None), 1))
         }
         0x0E => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
-            (Instruction::Nor(None, Some((parameter1, parameter2))), 2)
+            Ok((Instruction::Nor(None, Some((parameter1, parameter2))), 2))
         }
         0x0F => {
             let parameter = memory[program_counter + 1];
-            (Instruction::And(Some(parameter), None), 1)
+            Ok((Instruction::And(Some(parameter), None), 1))
         }
         0x10 => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
-            (Instruction::And(None, Some((parameter1, parameter2))), 2)
+            Ok((Instruction::And(None, Some((parameter1, parameter2))), 2))
         }
         0x11 => {
             let parameter = memory[program_counter + 1];
-            (Instruction::Nand(Some(parameter), None), 1)
+            Ok((Instruction::Nand(Some(parameter), None), 1))
         }
         0x12 => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
-            (Instruction::Nand(None, Some((parameter1, parameter2))), 2)
+            Ok((Instruction::Nand(None, Some((parameter1, parameter2))), 2))
         }
-        0x13 => (Instruction::Not, 0),
-        0x14 => (Instruction::RotateRight, 0),
-        0x15 => (Instruction::RotateLeft, 0),
-        0x16 => (Instruction::ShiftRight, 0),
-        0x17 => (Instruction::ShiftLeft, 0),
+        0x13 => Ok((Instruction::Not, 0)),
+        0x14 => Ok((Instruction::RotateRight, 0)),
+        0x15 => Ok((Instruction::RotateLeft, 0)),
+        0x16 => Ok((Instruction::ShiftRight, 0)),
+        0x17 => Ok((Instruction::ShiftLeft, 0)),
         0x21 => {
             let parameter = memory[program_counter + 1];
-            (Instruction::PushRegisterToStack(parameter), 1)
+            Ok((Instruction::PushRegisterToStack(parameter), 1))
         }
         0x22 => {
             let parameter = memory[program_counter + 1];
-            (Instruction::PopRegisterFromStack(parameter), 1)
+            Ok((Instruction::PopRegisterFromStack(parameter), 1))
         }
         0x23 => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
-            (Instruction::LoadAccumulator(Some(Address::new_absolute(parameter1, parameter2)), None), 2)
+            Ok((Instruction::LoadAccumulator(Some(Address::new_absolute(parameter1, parameter2)), None), 2))
         }
         0x24 => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
             let parameter3 = memory[program_counter + 3];
-            (Instruction::LoadAccumulator(Some(Address::new_indexed(parameter1, parameter2, parameter3)), None), 3)
+            Ok((Instruction::LoadAccumulator(Some(Address::new_indexed(parameter1, parameter2, parameter3)), None), 3))
         }
         0x25 => {
             let parameter = memory[program_counter + 1];
-            (Instruction::LoadAccumulator(Some(Address::new_zeropage(parameter)), None), 1)
+            Ok((Instruction::LoadAccumulator(Some(Address::new_zeropage(parameter)), None), 1))
         }
         0x26 => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
-            (Instruction::LoadAccumulator(Some(Address::new_zeropage_indexed(parameter1, parameter2)), None), 2)
+            Ok((Instruction::LoadAccumulator(Some(Address::new_zeropage_indexed(parameter1, parameter2)), None), 2))
         }
         0x27 => {
             let parameter = memory[program_counter + 1];
-            (Instruction::LoadAccumulator(None, Some(parameter)), 1)
+            Ok((Instruction::LoadAccumulator(None, Some(parameter)), 1))
         }
         0x28 => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
-            (Instruction::StoreAccumulator(Address::new_absolute(parameter1, parameter2)), 2)
+            Ok((Instruction::StoreAccumulator(Address::new_absolute(parameter1, parameter2)), 2))
         }
         0x29 => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
             let parameter3 = memory[program_counter + 3];
-            (Instruction::StoreAccumulator(Address::new_indexed(parameter1, parameter2, parameter3)), 3)
+            Ok((Instruction::StoreAccumulator(Address::new_indexed(parameter1, parameter2, parameter3)), 3))
         }
         0x2A => {
             let parameter = memory[program_counter + 1];
-            (Instruction::StoreAccumulator(Address::new_zeropage(parameter)), 1)
+            Ok((Instruction::StoreAccumulator(Address::new_zeropage(parameter)), 1))
         }
         0x2B => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
-            (Instruction::StoreAccumulator(Address::new_zeropage_indexed(parameter1, parameter2)), 2)
+            Ok((Instruction::StoreAccumulator(Address::new_zeropage_indexed(parameter1, parameter2)), 2))
         }
         0x2C => {
             let parameter = memory[program_counter + 1];
-            (Instruction::CopyAccumulatorToRegister(parameter), 1)
+            Ok((Instruction::CopyAccumulatorToRegister(parameter), 1))
         }
         0x2D => {
             let parameter = memory[program_counter + 1];
-            (Instruction::CopyRegisterToAccumulator(parameter), 1)
+            Ok((Instruction::CopyRegisterToAccumulator(parameter), 1))
         }
         0x42 => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
-            (Instruction::BranchCarrySet(Address::new_absolute(parameter1, parameter2)), 2)
+            Ok((Instruction::BranchCarrySet(Address::new_absolute(parameter1, parameter2)), 2))
         }
         0x43 => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
             let parameter3 = memory[program_counter + 3];
-            (Instruction::BranchCarrySet(Address::new_indexed(parameter1, parameter2, parameter3)), 3)
+            Ok((Instruction::BranchCarrySet(Address::new_indexed(parameter1, parameter2, parameter3)), 3))
         }
         0x44 => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
-            (Instruction::BranchCarryClear(Address::new_absolute(parameter1, parameter2)), 2)
+            Ok((Instruction::BranchCarryClear(Address::new_absolute(parameter1, parameter2)), 2))
         }
         0x45 => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
             let parameter3 = memory[program_counter + 3];
-            (Instruction::BranchCarryClear(Address::new_indexed(parameter1, parameter2, parameter3)), 3)
+            Ok((Instruction::BranchCarryClear(Address::new_indexed(parameter1, parameter2, parameter3)), 3))
         }
         0x46 => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
-            (Instruction::BranchNegative(Address::new_absolute(parameter1, parameter2)), 2)
+            Ok((Instruction::BranchNegative(Address::new_absolute(parameter1, parameter2)), 2))
         }
         0x47 => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
             let parameter3 = memory[program_counter + 3];
-            (Instruction::BranchNegative(Address::new_indexed(parameter1, parameter2, parameter3)), 3)
+            Ok((Instruction::BranchNegative(Address::new_indexed(parameter1, parameter2, parameter3)), 3))
         }
         0x48 => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
-            (Instruction::BranchPositive(Address::new_absolute(parameter1, parameter2)), 2)
+            Ok((Instruction::BranchPositive(Address::new_absolute(parameter1, parameter2)), 2))
         }
         0x49 => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
             let parameter3 = memory[program_counter + 3];
-            (Instruction::BranchPositive(Address::new_indexed(parameter1, parameter2, parameter3)), 3)
+            Ok((Instruction::BranchPositive(Address::new_indexed(parameter1, parameter2, parameter3)), 3))
         }
         0x4A => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
             let parameter3 = memory[program_counter + 3];
-            (Instruction::BranchEqual(parameter1, Address::new_absolute(parameter2, parameter3)), 3)
+            Ok((Instruction::BranchEqual(parameter1, Address::new_absolute(parameter2, parameter3)), 3))
         }
         0x4B => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
             let parameter3 = memory[program_counter + 3];
             let parameter4 = memory[program_counter + 4];
-            (Instruction::BranchEqual(parameter1, Address::new_indexed(parameter2, parameter3, parameter4)), 3)
+            Ok((Instruction::BranchEqual(parameter1, Address::new_indexed(parameter2, parameter3, parameter4)), 3))
         }
         0x4C => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
             let parameter3 = memory[program_counter + 3];
-            (Instruction::BranchNotEqual(parameter1, Address::new_absolute(parameter2, parameter3)), 3)
+            Ok((Instruction::BranchNotEqual(parameter1, Address::new_absolute(parameter2, parameter3)), 3))
         }
         0x4D => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
             let parameter3 = memory[program_counter + 3];
             let parameter4 = memory[program_counter + 4];
-            (Instruction::BranchNotEqual(parameter1, Address::new_indexed(parameter2, parameter3, parameter4)), 3)
+            Ok((Instruction::BranchNotEqual(parameter1, Address::new_indexed(parameter2, parameter3, parameter4)), 3))
         }
         0x4E => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
-            (Instruction::BranchZero(Address::new_absolute(parameter1, parameter2)), 2)
+            Ok((Instruction::BranchZero(Address::new_absolute(parameter1, parameter2)), 2))
         }
         0x4F => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
             let parameter3 = memory[program_counter + 3];
-            (Instruction::BranchZero(Address::new_indexed(parameter1, parameter2, parameter3)), 3)
+            Ok((Instruction::BranchZero(Address::new_indexed(parameter1, parameter2, parameter3)), 3))
         }
         0x50 => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
-            (Instruction::BranchNotZero(Address::new_absolute(parameter1, parameter2)), 2)
+            Ok((Instruction::BranchNotZero(Address::new_absolute(parameter1, parameter2)), 2))
         }
         0x51 => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
             let parameter3 = memory[program_counter + 3];
-            (Instruction::BranchNotZero(Address::new_indexed(parameter1, parameter2, parameter3)), 3)
+            Ok((Instruction::BranchNotZero(Address::new_indexed(parameter1, parameter2, parameter3)), 3))
         }
         0x52 => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
-            (Instruction::Jump(Address::new_absolute(parameter1, parameter2)), 2)
+            Ok((Instruction::Jump(Address::new_absolute(parameter1, parameter2)), 2))
         }
         0x53 => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
             let parameter3 = memory[program_counter + 3];
-            (Instruction::Jump(Address::new_indexed(parameter1, parameter2, parameter3)), 3)
+            Ok((Instruction::Jump(Address::new_indexed(parameter1, parameter2, parameter3)), 3))
         }
-        0x54 => (Instruction::PushProgramCounter, 0),
-        0x55 => (Instruction::PopProgramCounter, 0),
+        0x54 => Ok((Instruction::PushProgramCounter, 0)),
+        0x55 => Ok((Instruction::PopProgramCounter, 0)),
         //0x56 => (Instruction::IncrementProgramCounter, 0),
-        0x57 => (Instruction::PopProgramCounterSubroutine, 0),
+        0x57 => Ok((Instruction::PopProgramCounterSubroutine, 0)),
         0x58 => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
             let parameter3 = memory[program_counter + 3];
-            (Instruction::BranchGreater(parameter1, Address::new_absolute(parameter2, parameter3)), 3)
+            Ok((Instruction::BranchGreater(parameter1, Address::new_absolute(parameter2, parameter3)), 3))
         }
         0x59 => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
             let parameter3 = memory[program_counter + 3];
             let parameter4 = memory[program_counter + 4];
-            (Instruction::BranchGreater(parameter1, Address::new_indexed(parameter2, parameter3, parameter4)), 3)
+            Ok((Instruction::BranchGreater(parameter1, Address::new_indexed(parameter2, parameter3, parameter4)), 3))
         }
         0x5A => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
             let parameter3 = memory[program_counter + 3];
-            (Instruction::BranchLess(parameter1, Address::new_absolute(parameter2, parameter3)), 3)
+            Ok((Instruction::BranchLess(parameter1, Address::new_absolute(parameter2, parameter3)), 3))
         }
         0x5B => {
             let parameter1 = memory[program_counter + 1];
             let parameter2 = memory[program_counter + 2];
             let parameter3 = memory[program_counter + 3];
             let parameter4 = memory[program_counter + 4];
-            (Instruction::BranchLess(parameter1, Address::new_indexed(parameter2, parameter3, parameter4)), 3)
+            Ok((Instruction::BranchLess(parameter1, Address::new_indexed(parameter2, parameter3, parameter4)), 3))
         }
         _ => {
             Err(Box::from("parse_error"))

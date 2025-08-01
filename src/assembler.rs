@@ -606,6 +606,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
             }
             // -------------------- assembler directives --------------------
             Instruction::Label(name) => {
+                let name = name.rsplit_once('/').unwrap_or(("", name.as_str())).1.to_string();
                 labels.push(AssemblerLabel {
                     name,
                     address: target_address as u16
@@ -648,25 +649,28 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
     // compute addresses of all labels and replace labels with addresses
     // part 1 of pass 3 in assembling sequence
     for label_use in label_uses {
+        let label_use_name = label_use.name.rsplit_once('/')
+            .unwrap_or(("", label_use.name.as_str()))
+            .1.to_string();
         let mut target_label = &AssemblerLabel {
             name: "".to_string(),
             address: 0
         };
         for label in labels.iter() {
-            if label.name == label_use.name {
+            if label.name == label_use_name {
                 target_label = label;
                 break;
             }
         }
         if target_label.name.is_empty() {
-            if label_use.name.ends_with("_EndSubroutine") {
+            if label_use_name.ends_with("_EndSubroutine") {
                 // I totally didn't spend like half an hour trying to debug it when I just had the
                 // syntax wrong on subroutines in my test file and added this to make it easier to tell
-                panic!("Could not find label \"{}\"! Perhaps you forgot to return from a subroutine?", label_use.name);
+                panic!("Could not find label \"{label_use_name}\"! Perhaps you forgot to return from a subroutine?");
             }
-            panic!("Could not find label \"{}\"!", label_use.name);
+            panic!("Could not find label \"{label_use_name}\"!");
         }
-
+        // todo: may need to change the name in the label use passed here
         symbol_table.add_label_use(label_use.clone(), target_label.clone());
 
         let label_address = target_label.address.to_be_bytes();

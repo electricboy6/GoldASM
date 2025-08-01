@@ -1,0 +1,18 @@
+#define IN_BYTE %FF08
+#define NEW_DATA %FF09
+
+// sets the carry flag if data was read
+// stores the new data to the accumulator if there is any
+sr READ_DATA_IF_NEW:
+    lda %*NEW_DATA
+    // if there isn't new data, we're done
+    bze ~END_OF_SUBROUTINE
+    // reset the new data flag
+    lda #00
+    sta %*NEW_DATA
+    // load the data
+    lda %*IN_BYTE
+    // set the carry flag so we know that we read data
+    sc
+END_OF_SUBROUTINE:
+    rts READ_DATA_IF_NEW
