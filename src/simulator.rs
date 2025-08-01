@@ -180,7 +180,9 @@ impl App {
 
         // --------------------- IO Block ---------------------
         let serial_text = self.serial_buffer.iter().collect::<String>();
-        let io_text = Text::from(serial_text.white());
+        let io_text = Text::from(serial_text.lines().map(|line| -> Line {
+            Line::from(line.white())
+        }).collect::<Vec<Line>>());
         let io_block = Block::bordered()
             .title("I/O");
         let io_paragraph = Paragraph::new(io_text).block(io_block);

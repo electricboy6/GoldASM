@@ -13,8 +13,8 @@ jsr ~serial_out.SEND_BYTE
 lda #6f
 jsr ~serial_out.SEND_BYTE
 // newline
-lda #0D
-jsr ~serial_out.SEND_BYTE
+//lda #0D // cr
+//jsr ~serial_out.SEND_BYTE
 lda #0A
 jsr ~serial_out.SEND_BYTE
 // world
@@ -28,7 +28,12 @@ lda #6c
 jsr ~serial_out.SEND_BYTE
 lda #64
 jsr ~serial_out.SEND_BYTE
+jmp ~END
 
+// program is over, just loop forever
+.org %FFF8
+END:
+    jmp ~END
 // reset vector
 .org %FFFC
 .word #02
