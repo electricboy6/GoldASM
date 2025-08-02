@@ -7,26 +7,26 @@ use std::time::Duration;
 use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use ratatui::prelude::*;
 use ratatui::{
-    buffer::Buffer,
-    layout::Rect,
     style::Stylize,
     symbols::border,
     text::{Line, Text},
     widgets::{
         Block,
         Paragraph,
-        Widget,
         List,
-        ListState
+        ListState,
+        Clear,
+        Wrap
     },
     DefaultTerminal, Frame,
 };
+use ratatui::layout::Flex;
 use crate::simulator::executor::Processor;
 use crate::disassembler;
 use crate::disassembler::symbols::SymbolTable;
 use crate::simulator::bin_parser::Instruction;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct App {
     cpu: Processor,
     exit: bool,
@@ -109,6 +109,52 @@ impl App {
         // make layout of stuff
         let [status_area, io_area, instruction_area, stack_area] =
             Layout::horizontal([Constraint::Fill(3), Constraint::Fill(3), Constraint::Fill(2), Constraint::Fill(2)]).areas(outer_block.inner(frame.area()));
+
+        // --------------------------- CPU STATE ---------------------------
+        let title = Line::from(" CPU State ");
+        let block = Block::bordered()
+            .title(title);
+
+        let mut status_register_text = String::new();
+        if self.cpu.status_register & 0b100000_00 > 1 {
+            push_to_string(&mut status_register_text, "carry");
+        }
+        if self.cpu.status_register & 0b010000_00 > 1 {
+            push_to_string(&mut status_register_text, "zero");
+        }
+        if self.cpu.status_register & 0b001000_00 > 1 {
+            push_to_string(&mut status_register_text, "greater than");
+        }
+        if self.cpu.status_register & 0b000100_00 > 1 {
+            push_to_string(&mut status_register_text, "less than");
+        }
+        if self.cpu.status_register & 0b000010_00 > 1 {
+            push_to_string(&mut status_register_text, "equal");
+        }
+        if self.cpu.status_register & 0b000001_00 > 1 {
+            push_to_string(&mut status_register_text, "negative");
+        }
+
+        let status_text = Text::from(vec![Line::from(vec![
+            "Accumulator: ".into(),
+            format!("{:02x} ", self.cpu.accumulator).to_string().yellow(),]), Line::from(vec![
+            "Registers: ".into(),
+            format!("{:02x?} ", self.cpu.registers).to_string().yellow(),]), Line::from(vec![
+            "Status register: ".into(),
+            format!("{} ({:08b}) ", status_register_text, self.cpu.status_register).to_string().yellow(),]), Line::from(vec![
+            "Operand 1: ".into(),
+            format!("{:02x} ", self.cpu.operand1).to_string().yellow(),]), Line::from(vec![
+            "Operand 2: ".into(),
+            format!("{:02x} ", self.cpu.operand2).to_string().yellow(),]), Line::from(vec![
+            "Program counter: ".into(),
+            format!("{:04x} ", self.cpu.program_counter).to_string().yellow(),]), Line::from(vec![
+            "Stack pointer: ".into(),
+            format!("{:02x} ", self.cpu.stack_pointer).to_string().yellow(),]),
+        ]);
+
+        let cpu_state = Paragraph::new(status_text)
+            .block(block);
+        // --------------------------- END CPU STATE ---------------------------
         
         // instructions list
         let memory_list_start = self.cpu.program_counter.saturating_sub(16) as usize;
@@ -174,7 +220,7 @@ impl App {
         // ---------------------------- END LIVE DISASSEMBLY ----------------------------
         
         let memory_list = List::new(memory_strings)
-            .block(Block::bordered().title("Memory"))
+            .block(Block::bordered().title(" Memory "))
             .highlight_symbol("-> ")
             .scroll_padding(32)
             .repeat_highlight_symbol(false);
@@ -186,20 +232,21 @@ impl App {
         }).collect();
 
         let stack_list = List::new(stack_strings)
-            .block(Block::bordered().title("Stack"))
+            .block(Block::bordered().title(" Stack "))
             .highlight_symbol("-> ")
             .repeat_highlight_symbol(false);
 
         // --------------------- IO Block ---------------------
         let serial_text = self.serial_text.iter().collect::<String>();
         let io_block = Block::bordered()
-            .title("I/O");
+            .title(" I/O ");
 
-        let io_text = List::new(serial_text.lines().map(|line| -> Line {
+        let io_text_lines = serial_text.lines().map(|line| -> Line {
             Line::from(line.white())
-        }).collect::<Vec<Line>>())
+        }).collect::<Vec<Line>>();
+        let io_text = Paragraph::new(io_text_lines)
             .block(io_block)
-            .highlight_symbol("");
+            .wrap(Wrap { trim: false });
         // --------------------- End IO Block ---------------------
         
         // render everything
@@ -207,7 +254,25 @@ impl App {
         frame.render_widget(io_text, io_area);
         frame.render_stateful_widget(memory_list, instruction_area, &mut self.instruction_state);
         frame.render_stateful_widget(stack_list, stack_area, &mut self.stack_state);
-        frame.render_widget(self, status_area);
+        frame.render_widget(cpu_state, status_area);
+        if self.send_mode {
+            let vertical = Layout::vertical([Constraint::Percentage(75)]).flex(Flex::Center);
+            let horizontal = Layout::horizontal([Constraint::Percentage(50)]).flex(Flex::Center);
+            let [popup] = vertical.areas(frame.area());
+            let [popup] = horizontal.areas(popup);
+
+            let tx_buffer_string = self.serial_tx_buffer.iter().collect::<String>();
+            let lines = tx_buffer_string.lines().map(|line| -> Line {
+                Line::from(line.white())
+            }).collect::<Vec<Line>>();
+            let text_to_send = Paragraph::new(lines)
+                .block(Block::bordered()
+                    .title(Line::from(" Enter your message. Press <Escape> to add it to the buffer. ").centered()))
+                .wrap(Wrap { trim: true })
+                .on_dark_gray();
+            frame.render_widget(Clear, popup);
+            frame.render_widget(text_to_send, popup);
+        }
     }
 
     fn handle_events(&mut self) -> io::Result<()> {
@@ -250,7 +315,6 @@ impl App {
             }
         } else {
             match key_event.code {
-                // todo: make an actual dialog for entering text
                 KeyCode::Esc => {
                     self.send_mode = false;
                 }
@@ -294,6 +358,7 @@ impl App {
         }
         self.cpu.reset();
         self.serial_text.clear();
+        self.serial_tx_buffer.clear();
     }
 }
 
@@ -302,55 +367,6 @@ fn push_to_string(string: &mut String, value_to_add: &str) {
         string.push_str(&(", ".to_string() + value_to_add));
     } else {
         string.push_str(value_to_add);
-    }
-}
-
-impl Widget for &mut App {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        let title = Line::from(" CPU State ");
-        let block = Block::bordered()
-            .title(title);
-        
-        let mut status_register_text = String::new();
-        if self.cpu.status_register & 0b100000_00 > 1 {
-            push_to_string(&mut status_register_text, "carry");
-        }
-        if self.cpu.status_register & 0b010000_00 > 1 {
-            push_to_string(&mut status_register_text, "zero");
-        }
-        if self.cpu.status_register & 0b001000_00 > 1 {
-            push_to_string(&mut status_register_text, "greater than");
-        }
-        if self.cpu.status_register & 0b000100_00 > 1 {
-            push_to_string(&mut status_register_text, "less than");
-        }
-        if self.cpu.status_register & 0b000010_00 > 1 {
-            push_to_string(&mut status_register_text, "equal");
-        }
-        if self.cpu.status_register & 0b000001_00 > 1 {
-            push_to_string(&mut status_register_text, "negative");
-        }
-
-        let status_text = Text::from(vec![Line::from(vec![
-            "Accumulator: ".into(),
-            format!("{:02x} ", self.cpu.accumulator).to_string().yellow(),]), Line::from(vec![
-            "Registers: ".into(),
-            format!("{:02x?} ", self.cpu.registers).to_string().yellow(),]), Line::from(vec![
-            "Status register: ".into(),
-            format!("{} ({:08b}) ", status_register_text, self.cpu.status_register).to_string().yellow(),]), Line::from(vec![
-            "Operand 1: ".into(),
-            format!("{:02x} ", self.cpu.operand1).to_string().yellow(),]), Line::from(vec![
-            "Operand 2: ".into(),
-            format!("{:02x} ", self.cpu.operand2).to_string().yellow(),]), Line::from(vec![
-            "Program counter: ".into(),
-            format!("{:04x} ", self.cpu.program_counter).to_string().yellow(),]), Line::from(vec![
-            "Stack pointer: ".into(),
-            format!("{:02x} ", self.cpu.stack_pointer).to_string().yellow(),]),
-        ]);
-
-        Paragraph::new(status_text)
-            .block(block)
-            .render(area, buf);
     }
 }
 

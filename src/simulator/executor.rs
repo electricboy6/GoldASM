@@ -10,7 +10,7 @@ fn calculate_address(address: Address, cpu: &Processor) -> u16 {
     }
     real_address
 }
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Processor {
     pub accumulator: u8,
     pub registers: [u8; 8],
@@ -344,10 +344,11 @@ impl Processor {
     }
     fn push_stack(&mut self, value: u8) {
         self.memory[(self.stack_pointer as u16 + 0x0100) as usize] = value;
-        self.stack_pointer = self.stack_pointer.wrapping_add(1);
+        // not using wrapping add/sub so we can catch stack overflows
+        self.stack_pointer += 1;
     }
     fn pop_stack(&mut self) -> u8 {
-        self.stack_pointer = self.stack_pointer.wrapping_sub(1);
+        self.stack_pointer -= 1;
         
         self.memory[(self.stack_pointer as u16 + 0x0100) as usize]
     }

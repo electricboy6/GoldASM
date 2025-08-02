@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
-use crate::assembler;
+use crate::{asm_parser, assembler};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct SymbolTable {
@@ -21,19 +21,19 @@ impl SymbolTable {
     pub fn from_bytes(bytes: &[u8]) -> Self {
         rmp_serde::from_slice(bytes).unwrap()
     }
-    pub fn add_pointer(&mut self, pointer: assembler::AssemblerPointer) {
+    pub fn add_define(&mut self, define: assembler::AssemblerDefine) {
         self.symbols.push(Symbol {
-            name: pointer.name,
-            address: pointer.address.address.to_decimal(),
-            symbol_type: SymbolType::Pointer,
+            name: define.name,
+            value: define.value,
+            symbol_type: SymbolType::Define,
         });
     }
-    pub fn add_pointer_use(&mut self, pointer_use: assembler::AssemblerPointerUse, pointer: assembler::AssemblerPointer) {
+    pub fn add_pointer_use(&mut self, pointer_use: assembler::AssemblerPointerUse, pointer: assembler::AssemblerDefine) {
         self.symbol_map.insert(
             pointer_use.index,
             Symbol {
                 name: pointer.name,
-                address: pointer.address.address.to_decimal(),
+                value: asm_parser::Address::from_str(&pointer.value).address.to_decimal().to_string(),
                 symbol_type: SymbolType::Pointer,
             }
         );
@@ -41,7 +41,7 @@ impl SymbolTable {
     pub fn add_label(&mut self, label: assembler::AssemblerLabel) {
         self.symbols.push(Symbol {
             name: label.name,
-            address: label.address,
+            value: label.address.to_string(),
             symbol_type: SymbolType::Label,
         });
     }
@@ -51,7 +51,7 @@ impl SymbolTable {
                 label_use.index,
                 Symbol {
                     name: label.name,
-                    address: label.address,
+                    value: label.address.to_string(),
                     symbol_type: SymbolType::Subroutine,
                 }
             );
@@ -60,7 +60,7 @@ impl SymbolTable {
                 label_use.index,
                 Symbol {
                     name: label.name,
-                    address: label.address,
+                    value: label.address.to_string(),
                     symbol_type: SymbolType::Label,
                 }
             );
@@ -71,7 +71,7 @@ impl SymbolTable {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Symbol {
     pub name: String,
-    pub address: u16,
+    pub value: String,
     pub symbol_type: SymbolType
 }
 
@@ -79,5 +79,6 @@ pub struct Symbol {
 pub enum SymbolType {
     Label,
     Pointer,
+    Define,
     Subroutine,
 }

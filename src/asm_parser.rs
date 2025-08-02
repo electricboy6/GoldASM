@@ -59,6 +59,24 @@ pub struct Address {
     pub pointer: Option<Pointer>,
 }
 impl Address {
+    pub fn pointer_from_str(value: &str, module_name_dot: &str) -> Address {
+        let pointer_name = &(module_name_dot.to_string() + value.splitn(2, '*')
+            .nth(1).unwrap()
+            .split_whitespace().nth(0).unwrap()
+            .trim_end_matches(','));
+
+        let modified_value = value.replace(&("*".to_string() + pointer_name), "0000");
+        let address_skeleton = Address::from_str(&modified_value);
+        Address {
+            address: address_skeleton.address,
+            index: address_skeleton.index,
+            mode: address_skeleton.mode,
+            pointer: Some(Pointer {
+                name: pointer_name.to_string(),
+                address: None,
+            })
+        }
+    }
     pub fn from_str(value: &str) -> Address {
         let address_value;
         let address;
@@ -67,6 +85,7 @@ impl Address {
         if value.contains('*') {
             let pointer_name = value.splitn(2, '*').nth(1).unwrap()
                 .split_whitespace().nth(0).unwrap().trim_end_matches(',');
+
             let modified_value = value.replace(&("*".to_string() + pointer_name), "0000");
             let address_skeleton = Address::from_str(&modified_value);
             return Address {
@@ -293,7 +312,7 @@ pub enum Instruction {
     Subroutine(String),
     PushProgramCounter,
     PopProgramCounter,
-    Pointer(String, PointerAddress),
+    Define(String, String),
     SetOrigin(Option<Address>),
     Word(Immediate),
     PopProgramCounterSubroutine,
@@ -375,7 +394,7 @@ pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
         // pointer definition logic
         if line.contains("#define") {
             // pointer creation
-            instructions.push(Instruction::Pointer( module_name_dot.to_string() + words[1], PointerAddress::from_str(words[2])));
+            instructions.push(Instruction::Define( module_name_dot.to_string() + words[1], words[2].to_string()));
             continue;
         }
 
@@ -451,9 +470,13 @@ pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
                 ));
             },
             "lda" => {
-                if parameter_str.contains("#") {
+                if parameter_str.contains('#') {
                     instructions.push(Instruction::LoadAccumulator(
                         None, Some(Immediate::from_str(parameter_str))
+                    ))
+                } else if parameter_str.contains('*') {
+                    instructions.push(Instruction::LoadAccumulator(
+                        Some(Address::pointer_from_str(parameter_str, module_name_dot)), None
                     ))
                 } else {
                     instructions.push(
@@ -462,9 +485,15 @@ pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
                 }
             },
             "sta" => {
-                instructions.push(
-                    Instruction::StoreAccumulator(Address::from_str(parameter_str))
-                )
+                if parameter_str.contains('*') {
+                    instructions.push(Instruction::StoreAccumulator(
+                        Address::pointer_from_str(parameter_str, module_name_dot)
+                    ))
+                } else {
+                    instructions.push(
+                        Instruction::StoreAccumulator(Address::from_str(parameter_str))
+                    )
+                }
             },
             "cpa" => {
                 instructions.push(Instruction::CopyAccumulatorToRegister(

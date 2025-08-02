@@ -28,12 +28,12 @@ jsr ~serial_out.SEND_BYTE
 //lda #64
 //jsr ~serial_out.SEND_BYTE
 
-lda #71 // 'q'
+lda #7e // '~'
 cpa 07
 
 LOOP:
     jsr ~serial_in.READ_CHAR
-    beq 07, ~END // if it's a 'q,' then quit
+    beq 07, ~END // if it's a '~' then quit
     jsr ~echo_user_char
     jmp ~LOOP
 

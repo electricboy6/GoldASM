@@ -13,7 +13,6 @@ sr SEND_NUMBER:
     plr 00
     rts SEND_NUMBER
 
-// todo: if we don't actually ever end up busy (likely), then get rid of the busy handling code
 sr SEND_BYTE:
     // we use registers 0 and 1, so back them up
     phr 00

@@ -29,9 +29,9 @@ pub struct AssemblerPointerUse {
     pub index: u16
 }
 #[derive(Clone, PartialEq, Debug)]
-pub struct AssemblerPointer {
+pub struct AssemblerDefine {
     pub name: String,
-    pub address: asm_parser::PointerAddress,
+    pub value: String,
 }
 
 
@@ -88,8 +88,8 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
     // make the vector of label usages
     let mut label_uses = Vec::new();
     
-    // make the vector of pointers
-    let mut pointers = Vec::new();
+    // make the vector of defines
+    let mut defines = Vec::new();
     // make the vector of pointer usages
     let mut pointer_uses = Vec::new();
     
@@ -612,10 +612,10 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
                     address: target_address as u16
                 });
             }
-            Instruction::Pointer(name, address) => {
-                pointers.push(AssemblerPointer {
+            Instruction::Define(name, value) => {
+                defines.push(AssemblerDefine {
                     name,
-                    address,
+                    value,
                 });
             }
             Instruction::Word(value) => {
@@ -680,8 +680,8 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
     // replace all pointer usages with the value of the pointer
     // part 2 of pass 3 in assembling sequence
     for pointer_use in pointer_uses {
-        let mut target_pointer = &AssemblerPointer{ name: "".to_string(), address: asm_parser::PointerAddress::from_str("%0000") };
-        for pointer in pointers.iter() {
+        let mut target_pointer = &AssemblerDefine{ name: "".to_string(), value: "".to_string() };
+        for pointer in defines.iter() {
             if pointer.name == pointer_use.pointer.name {
                 target_pointer = pointer;
                 break;
@@ -693,15 +693,17 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
 
         symbol_table.add_pointer_use(pointer_use.clone(), target_pointer.clone());
 
-        let pointer_address = target_pointer.address.address.to_bytes();
-        match target_pointer.address.address.size {
+        let pointer_address = asm_parser::PointerAddress::from_str(&target_pointer.value);
+
+        let pointer_address_bytes = pointer_address.address.to_bytes();
+        match pointer_address.address.size {
             asm_parser::NumberSize::EightBit => {
-                binary_instructions[(pointer_use.index - 1) as usize] = pointer_address[0];
+                binary_instructions[(pointer_use.index - 1) as usize] = pointer_address_bytes[0];
                 binary_instructions.remove(pointer_use.index as usize);
             }
             asm_parser::NumberSize::SixteenBit => {
-                binary_instructions[pointer_use.index as usize] = pointer_address[1];
-                binary_instructions[(pointer_use.index - 1) as usize] = pointer_address[0];
+                binary_instructions[pointer_use.index as usize] = pointer_address_bytes[1];
+                binary_instructions[(pointer_use.index - 1) as usize] = pointer_address_bytes[0];
             }
         }
     }
@@ -709,8 +711,8 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
     for label in labels {
         symbol_table.add_label(label);
     }
-    for pointer in pointers {
-        symbol_table.add_pointer(pointer);
+    for define in defines {
+        symbol_table.add_define(define);
     }
     
     if binary_instructions.len() > size as usize + 1 {
@@ -732,22 +734,33 @@ fn append(array: &mut [u8], values: &mut [u8], index: &mut usize) {
     }
 }
 
-pub fn write(binary: &Vec<u8>, directory: &str, filename: &str) {
+pub fn write(data: &[u8], directory: &str, filename: &str) {
     let file = std::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
         .open(directory.to_string() + filename);
 
-    if file.is_err() {
-        eprintln!("{}", format!("WARNING: Unable to create file \"{filename}\" (removing file, trying again)").yellow());
-        std::fs::remove_file(directory.to_string() + filename).expect("Failed to remove existing target file!");
-        // if it's something else, the call stack will just fill up
-        // todo: yes this is lazy error handling, what do you want me to do? this is still unfinished
-        write(binary, directory, filename);
-        return;
-    }
-    let mut file = file.unwrap();
-    file.write_all(binary).unwrap_or_else(|_| panic!("Unable to write to file \"{filename}\" in directory \"{directory}\"!"));
+    let mut file = file.unwrap_or_else(|error: std::io::Error| -> std::fs::File {
+        // error handling
+        if error.kind() == std::io::ErrorKind::AlreadyExists {
+            eprintln!("{}", format!("WARNING: File \"{filename}\" already exists. (removing file, trying again)").yellow());
+
+            std::fs::remove_file(directory.to_string() + filename).expect("Failed to remove existing target file!");
+            // create the file now that the old one is removed
+            std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(directory.to_string() + filename)
+                // error handling
+                .unwrap_or_else(
+                |_| panic!("Failed to create target file {filename} with error {error}!")
+            )
+        } else {
+            panic!("Could not create file \"{filename}\"! (had error {error:?})");
+        }
+    });
+
+    file.write_all(data).unwrap_or_else(|_| panic!("Unable to write to file \"{filename}\" in directory \"{directory}\"!"));
     file.sync_all().unwrap_or_else(|_| panic!("Unable to write to file \"{filename}\" in directory \"{directory}\"!"));
-    println!("Successfully wrote binary to file \"{filename}\"");
+    println!("INFO: Successfully wrote to file \"{filename}\"");
 }

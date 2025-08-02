@@ -13,15 +13,22 @@ SPINLOCK:
 // sets the carry flag if data was read
 // stores the new data to the accumulator if there is any
 sr READ_DATA_IF_NEW:
+    phr 00
     lda %*NEW_DATA
     // if there isn't new data, we're done
     bze ~END_OF_SUBROUTINE
+
+    // load the data (MUST BE DONE BEFORE RESETTING THE FLAG)
+    lda %FF08
+    cpa 00
+
     // reset the new data flag
     lda #00
     sta %FF09
-    // load the data
-    lda %FF08
+
     // set the carry flag so we know that we read data
     sc
+    cpr 00
 END_OF_SUBROUTINE:
+    plr 00
     rts READ_DATA_IF_NEW
