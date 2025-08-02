@@ -1,7 +1,7 @@
 #include lib/serial_out.gasm
 
-.org #0200
-lda #FF
+.org %0200
+lda #E9 // 233, largest fib number we can fit
 cpa 07
 // previous term
 lda #00
@@ -9,12 +9,20 @@ cpa 00
 // constant to add to numbers to convert to ascii
 lda #30
 cpa 02
+
 lda #01
+cpa 01
+lda #00
 LOOP:
-    add 00
+    add 00, 01
+    cpa 06
+    cpr 01
+    cpa 00
+    cpr 06
     cpa 01
-    add
     bne 07, ~LOOP
+
+jmp ~END
 
 // program is over, just loop forever
 .org %FFF8

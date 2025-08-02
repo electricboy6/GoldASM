@@ -170,15 +170,15 @@ impl Processor {
             }
             Instruction::Not => {
                 self.accumulator = !self.accumulator;
-                self.update_status_no_operands();
+                self.update_status_one_operand(self.accumulator);
             }
             Instruction::RotateRight => {
                 self.accumulator = self.accumulator.rotate_right(1);
-                self.update_status_no_operands();
+                self.update_status_one_operand(self.accumulator);
             }
             Instruction::RotateLeft => {
                 self.accumulator = self.accumulator.rotate_left(1);
-                self.update_status_no_operands();
+                self.update_status_one_operand(self.accumulator);
             }
             Instruction::ShiftRight => {
                 let carry_out = self.accumulator & 0b0000_0001;
@@ -188,14 +188,14 @@ impl Processor {
                 if carry_in > 1 {
                     self.accumulator |= 0b1000_0000;
                 }
-                
+
+                self.update_status_one_operand(self.accumulator);
+
                 if carry_out > 0 {
                     self.status_register |= 0b100000_00;
                 } else {
                     self.status_register &= 0b011111_00;
                 }
-                
-                self.update_status_no_operands();
             }
             Instruction::ShiftLeft => {
                 let carry_in = self.status_register & 0b100000_00;
@@ -206,14 +206,14 @@ impl Processor {
                 if carry_in > 0 {
                     self.accumulator |= 0b0000_0001;
                 }
-                
+
+                self.update_status_one_operand(self.accumulator);
+
                 if carry_out > 0 {
                     self.status_register |= 0b100000_00;
                 } else {
                     self.status_register &= 0b011111_00;
                 }
-                
-                self.update_status_no_operands();
             }
             Instruction::Noop => {}
             Instruction::SetCarry => {
@@ -234,6 +234,7 @@ impl Processor {
                 } else if let Some(immediate) = immediate {
                     self.accumulator = immediate;
                 }
+                self.update_status_one_operand(self.accumulator);
             }
             Instruction::StoreAccumulator(address) => {
                 self.memory[calculate_address(address, self) as usize] = self.accumulator;

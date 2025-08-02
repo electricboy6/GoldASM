@@ -1,5 +1,14 @@
 #define IN_BYTE %FF08
 #define NEW_DATA %FF09
+#define BUSY %FF0A
+
+sr READ_CHAR:
+    clc
+SPINLOCK:
+    jsr ~READ_DATA_IF_NEW
+    bcc ~SPINLOCK
+    rts READ_CHAR
+
 
 // sets the carry flag if data was read
 // stores the new data to the accumulator if there is any
@@ -9,9 +18,9 @@ sr READ_DATA_IF_NEW:
     bze ~END_OF_SUBROUTINE
     // reset the new data flag
     lda #00
-    sta %*NEW_DATA
+    sta %FF09
     // load the data
-    lda %*IN_BYTE
+    lda %FF08
     // set the carry flag so we know that we read data
     sc
 END_OF_SUBROUTINE:

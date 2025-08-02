@@ -1,0 +1,95 @@
+#include lib/serial_in.gasm
+#include lib/serial_out.gasm
+#include lib/math.gasm
+
+// player values
+#define p1_score_low    %00
+#define p1_score_high   %01
+#define p1_banked       %02
+
+#define p2_score_low    %03
+#define p2_score_high   %04
+#define p2_banked       %05
+
+#define p3_score_low    %06
+#define p3_score_high   %07
+#define p3_banked       %08
+
+#define p4_score_low    %09
+#define p4_score_high   %0A
+#define p4_banked       %0B
+
+// game values
+#define curr_round_number       %80 // current round number
+#define max_rounds              %81 // number of rounds to play to
+#define curr_player             %82 // 00, 01, 02, 03
+#define curr_subround_number    %83 // number of plays in this round
+
+// subroutine values
+#define mult_7_in_low       %20
+#define mult_7_in_high      %21
+#define mult_7_out_low      %22
+#define mult_7_out_high     %23
+
+.org %0200
+INIT_GAME:
+
+
+GAME_LOOP:
+
+
+jmp ~END
+
+sr MULT_BY_7:
+    phr 00
+    phr 01
+
+    clc
+    // multiply by 8
+    // shift #1 (effective multiply by 2)
+    lda %*mult_7_in_low
+    shl
+    cpa 00
+    lda %*mult_7_in_high
+    shl
+    cpa 01
+    // shift #2 (effective multiply by 4)
+    cpr 00
+    shl
+    cpa 00
+    cpr 01
+    shl
+    cpa 01
+    // shift #3 (effective multiply by 8)
+    cpr 00
+    shl
+    cpa 00
+    cpr 01
+    shl
+    cpa 01
+
+    // todo subtract original value
+    lda %*mult_7_in_high
+    sub 01
+    // do something about carry
+
+    // done
+    plr 03
+    plr 02
+    plr 01
+    plr 00
+    rts MULT_BY_7
+
+// program is over, just loop forever
+.org %FFF8
+END:
+    noop
+    jmp ~END
+
+// reset vector
+.org %FFFC
+.word #02
+.word #00
+
+// dependencies
+.org

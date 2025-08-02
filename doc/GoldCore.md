@@ -19,4 +19,5 @@ write-only except for the busy flag, which is read-only. The data on the outgoin
 cycle where the new data flag is high (the new data flag is reset after the data is written to the FIFO), and the busy
 flag will go high when the FIFO is full.
 ##### Rx
-`FF08` is the incoming byte. ``FF09`` is the new data flag (must be manually reset).
+`FF08` is the incoming byte. ``FF09`` is the new data flag (must be manually reset). ``FF0A`` is the busy flag (tells
+the other end to stop sending new characters)

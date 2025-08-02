@@ -375,7 +375,7 @@ pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
         // pointer definition logic
         if line.contains("#define") {
             // pointer creation
-            instructions.push(Instruction::Pointer( words[1].to_string(), PointerAddress::from_str(words[2])));
+            instructions.push(Instruction::Pointer( module_name_dot.to_string() + words[1], PointerAddress::from_str(words[2])));
             continue;
         }
 

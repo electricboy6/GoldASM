@@ -1,6 +1,7 @@
 pub mod bin_parser;
 mod executor;
 
+use std::collections::VecDeque;
 use std::io;
 use std::time::Duration;
 use crossterm::event::{self, Event, KeyCode, KeyEvent};
@@ -34,7 +35,9 @@ pub struct App {
     instruction_state: ListState,
     stack_state: ListState,
     auto_run: bool,
-    serial_buffer: Vec<char>
+    serial_text: Vec<char>,
+    send_mode: bool,
+    serial_tx_buffer: VecDeque<char>,
 }
 impl App {
 
@@ -86,15 +89,17 @@ impl App {
         let title = Line::from(" GoldCore Simulator ".bold());
         let tui_instructions = Line::from(vec![
             " Start Auto Run ".into(),
-            "<Up>".blue().bold(),
+            "<A>".blue().bold(),
             " Stop Auto Run ".into(),
-            "<Down>".blue().bold(),
+            "<P>".blue().bold(),
+            " Send message ".into(),
+            "<S>".blue().bold(),
             " Reset ".into(),
             "<Space>".blue().bold(),
             " Step ".into(),
             "<Right>".blue().bold(),
             " Quit ".into(),
-            "<Q> ".blue().bold(),
+            "<Escape> ".blue().bold(),
         ]);
         let outer_block = Block::bordered()
             .title(title.centered())
@@ -107,7 +112,7 @@ impl App {
         
         // instructions list
         let memory_list_start = self.cpu.program_counter.saturating_sub(16) as usize;
-        let memory_list_end = self.cpu.program_counter.saturating_add(16) as usize;
+        let memory_list_end = self.cpu.program_counter.saturating_add(48) as usize;
 
         let instructions = self.cpu.memory[memory_list_start..=memory_list_end].to_vec();
 
@@ -186,26 +191,29 @@ impl App {
             .repeat_highlight_symbol(false);
 
         // --------------------- IO Block ---------------------
-        let serial_text = self.serial_buffer.iter().collect::<String>();
-        let io_text = Text::from(serial_text.lines().map(|line| -> Line {
-            Line::from(line.white())
-        }).collect::<Vec<Line>>());
+        let serial_text = self.serial_text.iter().collect::<String>();
         let io_block = Block::bordered()
             .title("I/O");
-        let io_paragraph = Paragraph::new(io_text).block(io_block);
+
+        let io_text = List::new(serial_text.lines().map(|line| -> Line {
+            Line::from(line.white())
+        }).collect::<Vec<Line>>())
+            .block(io_block)
+            .highlight_symbol("");
         // --------------------- End IO Block ---------------------
         
         // render everything
         frame.render_widget(outer_block, frame.area());
-        frame.render_widget(io_paragraph, io_area);
+        frame.render_widget(io_text, io_area);
         frame.render_stateful_widget(memory_list, instruction_area, &mut self.instruction_state);
         frame.render_stateful_widget(stack_list, stack_area, &mut self.stack_state);
         frame.render_widget(self, status_area);
     }
 
     fn handle_events(&mut self) -> io::Result<()> {
-        // 10hz update rate
-        if event::poll(Duration::from_millis(100))? {
+        // 100hz update rate
+        // todo: make the auto run speed adjustable
+        if event::poll(Duration::from_millis(10))? {
             match event::read()? {
                 // events are registered on press and release
                 Event::Key(key_event) if key_event.is_press() => {
@@ -223,17 +231,40 @@ impl App {
         if !key_event.is_press() {
             return;
         }
-        match key_event.code {
-            KeyCode::Char(' ') => self.reset(),
-            KeyCode::Char('q') => self.exit(),
-            // left arrow
-            KeyCode::Left => (),
-            // right arrow
-            KeyCode::Right => self.step(),
-            // up arrow
-            KeyCode::Up => self.auto_run = true,
-            KeyCode::Down => self.auto_run = false,
-            _ => {}
+        if !self.send_mode {
+            if key_event.code == KeyCode::Char('s') {
+                self.send_mode = true;
+                return;
+            }
+            match key_event.code {
+                KeyCode::Char(' ') => self.reset(),
+                KeyCode::Esc => self.exit(),
+                // left arrow
+                KeyCode::Left => (),
+                // right arrow
+                KeyCode::Right => self.step(),
+                // up arrow
+                KeyCode::Char('a') => self.auto_run = true,
+                KeyCode::Char('p') => self.auto_run = false,
+                _ => {}
+            }
+        } else {
+            match key_event.code {
+                // todo: make an actual dialog for entering text
+                KeyCode::Esc => {
+                    self.send_mode = false;
+                }
+                KeyCode::Backspace => {
+                    self.serial_tx_buffer.pop_back();
+                }
+                KeyCode::Enter => {
+                    self.serial_tx_buffer.push_back('\n');
+                }
+                KeyCode::Char(character) => {
+                    self.serial_tx_buffer.push_back(character);
+                }
+                _ => ()
+            }
         }
     }
 
@@ -245,7 +276,14 @@ impl App {
         if self.cpu.memory[0xFF01] > 0 {
             // new data
             self.cpu.memory[0xFF01] = 0;
-            self.serial_buffer.push(self.cpu.memory[0xFF00] as char);
+            self.serial_text.push(self.cpu.memory[0xFF00] as char);
+        }
+        if self.cpu.memory[0xFF09] == 0 && self.cpu.memory[0xFF0A] == 0 && !self.send_mode {
+            // clear to send
+            if let Some(character) = self.serial_tx_buffer.pop_front() {
+                self.cpu.memory[0xFF08] = character as u8;
+                self.cpu.memory[0xFF09] = 1; // new data
+            }
         }
     }
     fn reset(&mut self) {
@@ -255,7 +293,7 @@ impl App {
             self.cpu.memory[index] = *byte;
         }
         self.cpu.reset();
-        self.serial_buffer.clear();
+        self.serial_text.clear();
     }
 }
 

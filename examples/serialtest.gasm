@@ -16,18 +16,40 @@ jsr ~serial_out.SEND_BYTE
 // newline
 lda #0A // '\n'
 jsr ~serial_out.SEND_BYTE
-// world
-lda #57
-jsr ~serial_out.SEND_BYTE
-lda #6f
-jsr ~serial_out.SEND_BYTE
-lda #72
-jsr ~serial_out.SEND_BYTE
-lda #6c
-jsr ~serial_out.SEND_BYTE
-lda #64
-jsr ~serial_out.SEND_BYTE
-jmp ~END
+//// world
+//lda #57
+//jsr ~serial_out.SEND_BYTE
+//lda #6f
+//jsr ~serial_out.SEND_BYTE
+//lda #72
+//jsr ~serial_out.SEND_BYTE
+//lda #6c
+//jsr ~serial_out.SEND_BYTE
+//lda #64
+//jsr ~serial_out.SEND_BYTE
+
+lda #71 // 'q'
+cpa 07
+
+LOOP:
+    jsr ~serial_in.READ_CHAR
+    beq 07, ~END // if it's a 'q,' then quit
+    jsr ~echo_user_char
+    jmp ~LOOP
+
+sr echo_user_char:
+    //cpa 00
+    //lda #3F
+    //jsr ~serial_out.SEND_BYTE
+    //lda #3A
+    //jsr ~serial_out.SEND_BYTE
+    //lda #20
+    //jsr ~serial_out.SEND_BYTE
+    //cpr 00
+    jsr ~serial_out.SEND_BYTE
+    //lda #0A
+    //jsr ~serial_out.SEND_BYTE
+    rts echo_user_char
 
 // program is over, just loop forever
 .org %FFF8

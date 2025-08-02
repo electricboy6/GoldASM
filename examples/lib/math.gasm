@@ -1,8 +1,4 @@
-// doesn't care about input sizes, but beware of integer overflow
-sr MULTIPLY:
-    // todo: write it
-    rts ~MULTIPLY
-
+// 1 byte
 sr DIVIDE:
     // todo: write it
-    rts ~DIVIDE
+    rts DIVIDE
