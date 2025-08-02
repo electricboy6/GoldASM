@@ -14,9 +14,7 @@ jsr ~serial_out.SEND_BYTE
 lda #6f
 jsr ~serial_out.SEND_BYTE
 // newline
-//lda #0D // cr
-//jsr ~serial_out.SEND_BYTE
-lda #0A
+lda #0A // '\n'
 jsr ~serial_out.SEND_BYTE
 // world
 lda #57

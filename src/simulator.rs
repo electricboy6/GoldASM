@@ -84,7 +84,7 @@ impl App {
         
         // create outer box
         let title = Line::from(" GoldCore Simulator ".bold());
-        let instructions = Line::from(vec![
+        let tui_instructions = Line::from(vec![
             " Start Auto Run ".into(),
             "<Up>".blue().bold(),
             " Stop Auto Run ".into(),
@@ -98,7 +98,7 @@ impl App {
         ]);
         let outer_block = Block::bordered()
             .title(title.centered())
-            .title_bottom(instructions.centered())
+            .title_bottom(tui_instructions.centered())
             .border_set(border::THICK);
         
         // make layout of stuff
@@ -113,8 +113,8 @@ impl App {
 
         // ---------------------------- LIVE DISASSEMBLY ----------------------------
         // create variables
-        let mut parsed_instructions: Vec<Instruction> = Vec::with_capacity(0xFFFF / 2);
-        let mut bytes_to_skip: Vec<u8> = Vec::with_capacity(0xFFFF / 2);
+        let mut parsed_instructions: Vec<Instruction> = Vec::with_capacity(instructions.len());
+        let mut bytes_to_skip: Vec<u8> = Vec::with_capacity(instructions.len());
         let mut program_counter_value: u32 = 0x0200;
         let mut disassemble_start: u32 = 0;
         let mut disassemble_end: u32 = 0;
@@ -125,19 +125,19 @@ impl App {
             if instruction.is_ok() {
                 let (parsed_instruction, num_extra_bytes) = instruction.unwrap();
 
-                // set the disassembly start
-                if program_counter_value >= memory_list_start as u32 && disassemble_start == 0 {
-                    disassemble_start = program_counter_value;
-                }
-                // increment the program counter
-                program_counter_value += num_extra_bytes as u32;
-                program_counter_value += 1;
-                // if we're at a valid instruction after memory_list_start and before memory_list_end, add it to the list
+                // if we're at an index after memory_list_start and before memory_list_end, add it to the list
                 if program_counter_value >= memory_list_start as u32 && program_counter_value <= memory_list_end as u32 {
+                    if disassemble_start == 0 {
+                        disassemble_start = program_counter_value;
+                    }
                     parsed_instructions.push(parsed_instruction);
                     bytes_to_skip.push(num_extra_bytes);
                     disassemble_end = program_counter_value;
                 }
+
+                // increment the program counter
+                program_counter_value += num_extra_bytes as u32;
+                program_counter_value += 1;
             } else {
                 program_counter_value += 1;
             }
@@ -151,12 +151,8 @@ impl App {
 
         let mut disassembled_lines = disassembler::disassemble(parsed_instructions, bytes_to_skip);
 
-        // todo: right after the jsr, everything is misaligned and I don't know why.
-        // everything's decoding properly and the disassembled lines are in the right spot, so maybe the memory index is screwed up?
-        if (memory_list_end - memory_list_start) > disassembled_lines.len()  {
-            for _ in 0..(disassemble_start as usize - memory_list_start) {
-                disassembled_lines.insert(0, "".to_string());
-            }
+        for _ in 0..(disassemble_start as usize - memory_list_start) {
+            disassembled_lines.insert(0, "".to_string());
         }
         for _ in 0..(instructions.len() - (disassemble_end - disassemble_start) as usize) {
             disassembled_lines.push("".to_string());
