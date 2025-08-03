@@ -682,7 +682,6 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
             }
             panic!("Could not find label \"{label_use_name}\"!");
         }
-        // todo: may need to change the name in the label use passed here
         symbol_table.add_label_use(label_use.clone(), target_label.clone());
 
         let label_address = target_label.address.to_be_bytes();

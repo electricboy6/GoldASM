@@ -2,7 +2,6 @@ pub mod symbols;
 
 use crate::simulator::bin_parser::Instruction;
 
-// todo: add in debug symbols
 pub fn disassemble(instructions: Vec<Instruction>, bytes_to_skip: Vec<u8>) -> Vec<String> {
     let mut result = Vec::with_capacity(instructions.len());
     for (index, instruction) in instructions.iter().enumerate() {
