@@ -93,7 +93,6 @@ pub enum Instruction {
     Jump(Address),
     PushProgramCounter,
     PopProgramCounter,
-    IncrementProgramCounter,
     PopProgramCounterSubroutine,
 }
 
@@ -346,7 +345,6 @@ pub fn parse_instruction(memory: &[u8; 65536], program_counter: u16) -> Result<(
         }
         0x54 => Ok((Instruction::PushProgramCounter, 0)),
         0x55 => Ok((Instruction::PopProgramCounter, 0)),
-        //0x56 => (Instruction::IncrementProgramCounter, 0),
         0x57 => Ok((Instruction::PopProgramCounterSubroutine, 0)),
         0x58 => {
             let parameter1 = memory[program_counter + 1];

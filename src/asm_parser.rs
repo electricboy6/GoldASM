@@ -812,7 +812,7 @@ pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
             "rts" => {
                 let label = words[1].trim();
                 instructions.push(Instruction::ReturnFromSubroutine(
-                    Subroutine { name: module_name_dot.to_string() + label + "_EndSubroutine" }
+                    Subroutine { name: module_name_dot.to_string() + label + "_EndSR" }
                 ));
             },
             "phpc" => instructions.push(Instruction::PushProgramCounter),

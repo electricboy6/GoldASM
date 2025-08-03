@@ -331,9 +331,6 @@ impl Processor {
                 let program_counter_small = self.pop_stack();
                 self.program_counter = (program_counter_big as u16) << 8 | (program_counter_small as u16);
             }
-            Instruction::IncrementProgramCounter => {
-                self.program_counter = self.program_counter.wrapping_add(1);
-            }
             Instruction::PopProgramCounterSubroutine => {
                 let program_counter_big = self.pop_stack();
                 let program_counter_small = self.pop_stack();

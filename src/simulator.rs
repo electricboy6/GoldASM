@@ -23,7 +23,7 @@ use ratatui::{
 use ratatui::layout::Flex;
 use crate::simulator::executor::Processor;
 use crate::disassembler;
-use crate::disassembler::symbols::SymbolTable;
+use crate::disassembler::symbols::{SymbolTable, SymbolType};
 use crate::simulator::bin_parser::Instruction;
 
 #[derive(Debug, Default, Clone)]
@@ -31,7 +31,7 @@ pub struct App {
     cpu: Processor,
     exit: bool,
     binary_path: String,
-    symbol_table: Option<SymbolTable>,
+    symbol_table: SymbolTable, // just empty if none
     instruction_state: ListState,
     stack_state: ListState,
     auto_run: bool,
@@ -44,7 +44,7 @@ impl App {
     /// runs the application's main loop until the user quits
     pub fn run(&mut self, terminal: &mut DefaultTerminal, binary_path: String) -> io::Result<()> {
         self.binary_path = binary_path;
-        self.symbol_table = None;
+        self.symbol_table = SymbolTable::new();
         self.reset();
         self.instruction_state = ListState::default();
         self.stack_state = ListState::default();
@@ -58,7 +58,7 @@ impl App {
         self.binary_path = binary_path;
 
         let symbol_table_file = std::fs::read(table_path).expect("File not found.");
-        self.symbol_table = Some(SymbolTable::from_bytes(&symbol_table_file));
+        self.symbol_table = SymbolTable::from_bytes(&symbol_table_file);
 
         self.reset();
 
@@ -108,9 +108,9 @@ impl App {
         
         // make layout of stuff
         let [status_area, io_area, instruction_area, stack_area] =
-            Layout::horizontal([Constraint::Fill(3), Constraint::Fill(3), Constraint::Fill(2), Constraint::Fill(2)]).areas(outer_block.inner(frame.area()));
+            Layout::horizontal([Constraint::Percentage(25), Constraint::Percentage(25), Constraint::Percentage(40), Constraint::Percentage(10)]).areas(outer_block.inner(frame.area()));
 
-        // --------------------------- CPU STATE ---------------------------
+        // ------------------------------ CPU STATE ------------------------------
         let title = Line::from(" CPU State ");
         let block = Block::bordered()
             .title(title);
@@ -154,7 +154,7 @@ impl App {
 
         let cpu_state = Paragraph::new(status_text)
             .block(block);
-        // --------------------------- END CPU STATE ---------------------------
+        // ------------------------------ END CPU STATE ------------------------------
         
         // instructions list
         let memory_list_start = self.cpu.program_counter.saturating_sub(16) as usize;
@@ -162,7 +162,7 @@ impl App {
 
         let instructions = self.cpu.memory[memory_list_start..=memory_list_end].to_vec();
 
-        // ---------------------------- LIVE DISASSEMBLY ----------------------------
+        // ------------------------------ LIVE DISASSEMBLY ------------------------------
         // create variables
         let mut parsed_instructions: Vec<Instruction> = Vec::with_capacity(instructions.len());
         let mut bytes_to_skip: Vec<u8> = Vec::with_capacity(instructions.len());
@@ -211,13 +211,72 @@ impl App {
 
         let memory_strings: Vec<Line> = instructions.iter().enumerate().map(|(index, item)| -> Line {
             let disassembled_line = disassembled_lines[index].as_str();
-            if disassembled_line.is_empty() {
-                format!("0x{:04x?}: ", index + memory_list_start).yellow() + format!("0x{item:02x?}").green()
-            } else {
-                format!("0x{:04x?}: ", index + memory_list_start).yellow() + format!("0x{item:02x?}").green() + " -> ".light_green() + disassembled_line.light_green()
+            let memory_index = index + memory_list_start;
+
+            let mut final_line = format!("0x{:04x?}: ", index + memory_list_start).yellow() + format!("0x{item:02x?}").green();
+
+            if !disassembled_line.is_empty() {
+                final_line = final_line + " -> ".light_green() + disassembled_line.light_green();
             }
+
+            // ------------------------------ SYMBOL TABLE ------------------------------
+            if let Some(symbol) = self.symbol_table.symbol_uses.get(&(memory_index as u16)) {
+                let mut symbol = symbol.clone();
+                // remove folder names
+                symbol.name = symbol.name.rsplit_once('/').unwrap_or(("", &symbol.name)).1.to_string();
+                // convert value to hex
+                if let Ok(symbol_value) = symbol.value.parse::<u16>() {
+                    symbol.value = format!("{symbol_value:04x}");
+                }
+                // add prefix based on type
+                match symbol.symbol_type {
+                    SymbolType::Pointer => {
+                        symbol.name = "*".to_string() + &symbol.name;
+                        // if you see an into iter on final_line, it's magic trickery so I can keep
+                        // the styling while still doing operations on the string
+                        let final_line_vec: Vec<Span> = final_line.into_iter().map(|span| {
+                            span.clone().content(span.content.replace(&symbol.value, ""))
+                        }).collect();
+                        final_line = Line::from(final_line_vec);
+                    }
+                    SymbolType::Label => {
+                        symbol.name = "~".to_string() + &symbol.name;
+                        let final_line_vec: Vec<Span> = final_line.into_iter().map(|span| {
+                            span.clone().content(span.content.replace(&("%".to_string() + &symbol.value), ""))
+                        }).collect();
+                        final_line = Line::from(final_line_vec);
+                        symbol.value = "%".to_string() + &symbol.value;
+                    }
+                    SymbolType::Subroutine => {
+                        symbol.name = "~".to_string() + symbol.name.strip_suffix("_SR").unwrap();
+                        let final_line_vec: Vec<Span> = final_line.into_iter().map(|span| {
+                            span.clone().content(span.content.replace(&("%".to_string() + &symbol.value), ""))
+                        }).collect();
+                        final_line = Line::from(final_line_vec);
+                        symbol.value = "%".to_string() + &symbol.value;
+                    }
+                    _ => eprintln!("{symbol:?}")
+                }
+
+                final_line += format!("{}: {}", symbol.name, symbol.value).light_blue()
+            }
+            if let Some(symbol) = self.symbol_table.symbols.get(&(memory_index as u16)) {
+                if symbol.name.ends_with("_EndSR") {
+                    final_line += format!(" {}", symbol.clone().name.strip_suffix("_EndSR").unwrap()).light_blue()
+                } else if symbol.name.ends_with("_SR") {
+                    let mut final_line_vec: Vec<Span> = final_line.into_iter().collect::<Vec<Span>>();
+                    final_line_vec.insert(0, format!("sr {}: ", symbol.clone().name.strip_suffix("_SR").unwrap()).blue());
+                    final_line = Line::from(final_line_vec);
+                } else {
+                    let mut final_line_vec: Vec<Span> = final_line.into_iter().collect::<Vec<Span>>();
+                    final_line_vec.insert(0, format!("{}: ", symbol.clone().name).blue());
+                    final_line = Line::from(final_line_vec);
+                }
+            }
+            // ------------------------------ END SYMBOL TABLE ------------------------------
+            final_line
         }).collect();
-        // ---------------------------- END LIVE DISASSEMBLY ----------------------------
+        // ------------------------------ END LIVE DISASSEMBLY ------------------------------
         
         let memory_list = List::new(memory_strings)
             .block(Block::bordered().title(" Memory "))
@@ -236,7 +295,7 @@ impl App {
             .highlight_symbol("-> ")
             .repeat_highlight_symbol(false);
 
-        // --------------------- IO Block ---------------------
+        // ------------------------------ IO BLOCK ------------------------------
         let serial_text = self.serial_text.iter().collect::<String>();
         let io_block = Block::bordered()
             .title(" I/O ");
@@ -247,7 +306,7 @@ impl App {
         let io_text = Paragraph::new(io_text_lines)
             .block(io_block)
             .wrap(Wrap { trim: false });
-        // --------------------- End IO Block ---------------------
+        // ------------------------------ END IO BLOCK ------------------------------
         
         // render everything
         frame.render_widget(outer_block, frame.area());

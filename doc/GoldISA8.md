@@ -122,8 +122,6 @@ Opcodes ``0x42``-``0x62`` have been reserved for flow control.
 ``0x53 0xzz 0xzz 0xzz`` - indexed
 #### PHPC/PLPC
 ``0x54``, ``0x55``
-#### INCPC
-``0x56``
 #### PLPCSR
 ``0x57``
 #### BG

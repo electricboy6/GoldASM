@@ -148,9 +148,6 @@ pub fn disassemble(instructions: Vec<Instruction>, bytes_to_skip: Vec<u8>) -> Ve
             Instruction::PopProgramCounter => {
                 result.push("plpc".to_string());
             }
-            Instruction::IncrementProgramCounter => {
-                unimplemented!("instruction has been removed but i'm too lazy to actually remove it")
-            }
             Instruction::PopProgramCounterSubroutine => {
                 result.push("rts".to_string());
             }

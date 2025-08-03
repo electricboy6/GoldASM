@@ -20,7 +20,8 @@ pub struct AssemblerLabel {
 pub struct AssemblerLabelUse {
     pub name: String,
     // INVARIANT: there MUST be a two byte area reserved in the vector for the label
-    pub index: u16
+    pub address_index: u16,
+    pub instruction_index: u16
 }
 #[derive(Clone, PartialEq, Debug)]
 pub struct AssemblerPointerUse {
@@ -45,9 +46,9 @@ pub fn preprocess(instructions: Vec<Instruction>) -> Vec<Instruction> {
             // add in the start of a subroutine
             Instruction::Subroutine(label) => {
                 resulting_instructions.push(Instruction::Jump(None, Some(
-                    asm_parser::Label { name: label.clone() + "_EndSubroutine" }
+                    asm_parser::Label { name: label.clone() + "_EndSR" }
                 )));
-                resulting_instructions.push(Instruction::Label(label + "_Subroutine"));
+                resulting_instructions.push(Instruction::Label(label + "_SR"));
             }
             // add in the end of a subroutine
             Instruction::ReturnFromSubroutine(label) => {
@@ -60,7 +61,7 @@ pub fn preprocess(instructions: Vec<Instruction>) -> Vec<Instruction> {
                 resulting_instructions.push(Instruction::PushProgramCounter);
                 if let Some(label_value) = label {
                     resulting_instructions.push(Instruction::Jump(
-                        address, Some(asm_parser::Label { name: label_value.name + "_Subroutine" })
+                        address, Some(asm_parser::Label { name: label_value.name + "_SR" })
                     ));
                 } else {
                     resulting_instructions.push(Instruction::Jump(address, None));
@@ -227,7 +228,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
                     if let Some(pointer) = address.pointer {
                         pointer_uses.push(AssemblerPointerUse {
                             pointer,
-                            index: (target_address + 2) as u16
+                            index: target_address as u16
                         });
                     }
                     match address.mode {
@@ -263,7 +264,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
                 if let Some(pointer) = address.pointer {
                     pointer_uses.push(AssemblerPointerUse {
                         pointer,
-                        index: (target_address + 2) as u16
+                        index: target_address as u16
                     });
                 }
                 match address.mode {
@@ -316,7 +317,8 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
                     insert(&mut binary_instructions, 0x42, &mut target_address);
                     label_uses.push(AssemblerLabelUse {
                         name: label.unwrap().name,
-                        index: (target_address + 1) as u16
+                        address_index: (target_address - 1) as u16,
+                        instruction_index: (target_address - 1) as u16
                     });
                     // allocate space for the address to be replaced
                     insert(&mut binary_instructions, 0x00, &mut target_address);
@@ -342,7 +344,8 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
                     insert(&mut binary_instructions, 0x44, &mut target_address);
                     label_uses.push(AssemblerLabelUse {
                         name: label.unwrap().name,
-                        index: (target_address + 1) as u16
+                        address_index: (target_address - 1) as u16,
+                        instruction_index: (target_address - 1) as u16
                     });
                     // allocate space for the address to be replaced
                     insert(&mut binary_instructions, 0x00, &mut target_address);
@@ -368,7 +371,8 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
                     insert(&mut binary_instructions, 0x46, &mut target_address);
                     label_uses.push(AssemblerLabelUse {
                         name: label.unwrap().name,
-                        index: (target_address + 1) as u16
+                        address_index: (target_address - 1) as u16,
+                        instruction_index: (target_address - 1) as u16
                     });
                     // allocate space for the address to be replaced
                     insert(&mut binary_instructions, 0x00, &mut target_address);
@@ -394,7 +398,8 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
                     insert(&mut binary_instructions, 0x48, &mut target_address);
                     label_uses.push(AssemblerLabelUse {
                         name: label.unwrap().name,
-                        index: (target_address + 1) as u16
+                        address_index: (target_address - 1) as u16,
+                        instruction_index: (target_address - 1) as u16
                     });
                     // allocate space for the address to be replaced
                     insert(&mut binary_instructions, 0x00, &mut target_address);
@@ -423,7 +428,8 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
                     insert(&mut binary_instructions, register.address, &mut target_address);
                     label_uses.push(AssemblerLabelUse {
                         name: label.unwrap().name,
-                        index: (target_address + 1) as u16
+                        address_index: (target_address - 1) as u16,
+                        instruction_index: (target_address - 2) as u16
                     });
                     // allocate space for the address to be replaced
                     insert(&mut binary_instructions, 0x00, &mut target_address);
@@ -452,7 +458,8 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
                     insert(&mut binary_instructions, register.address, &mut target_address);
                     label_uses.push(AssemblerLabelUse {
                         name: label.unwrap().name,
-                        index: (target_address + 1) as u16
+                        address_index: (target_address - 1) as u16,
+                        instruction_index: (target_address - 2) as u16
                     });
                     // allocate space for the address to be replaced
                     insert(&mut binary_instructions, 0x00, &mut target_address);
@@ -478,7 +485,8 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
                     insert(&mut binary_instructions, 0x4E, &mut target_address);
                     label_uses.push(AssemblerLabelUse {
                         name: label.unwrap().name,
-                        index: (target_address + 1) as u16
+                        address_index: (target_address - 1) as u16,
+                        instruction_index: (target_address - 1) as u16
                     });
                     // allocate space for the address to be replaced
                     insert(&mut binary_instructions, 0x00, &mut target_address);
@@ -504,7 +512,8 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
                     insert(&mut binary_instructions, 0x50, &mut target_address);
                     label_uses.push(AssemblerLabelUse {
                         name: label.unwrap().name,
-                        index: (target_address + 1) as u16
+                        address_index: (target_address - 1) as u16,
+                        instruction_index: (target_address - 1) as u16
                     });
                     // allocate space for the address to be replaced
                     insert(&mut binary_instructions, 0x00, &mut target_address);
@@ -533,7 +542,8 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
                     insert(&mut binary_instructions, register.address, &mut target_address);
                     label_uses.push(AssemblerLabelUse {
                         name: label.unwrap().name,
-                        index: (target_address + 1) as u16
+                        address_index: (target_address - 1) as u16,
+                        instruction_index: (target_address - 2) as u16
                     });
                     // allocate space for the address to be replaced
                     insert(&mut binary_instructions, 0x00, &mut target_address);
@@ -562,7 +572,8 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
                     insert(&mut binary_instructions, register.address, &mut target_address);
                     label_uses.push(AssemblerLabelUse {
                         name: label.unwrap().name,
-                        index: (target_address + 1) as u16
+                        address_index: (target_address - 1) as u16,
+                        instruction_index: (target_address - 2) as u16
                     });
                     // allocate space for the address to be replaced
                     insert(&mut binary_instructions, 0x00, &mut target_address);
@@ -588,7 +599,8 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
                     insert(&mut binary_instructions, 0x52, &mut target_address);
                     label_uses.push(AssemblerLabelUse {
                         name: label.unwrap().name,
-                        index: (target_address + 1) as u16
+                        address_index: (target_address - 1) as u16,
+                        instruction_index: (target_address - 1) as u16
                     });
                     // allocate space for the address to be replaced
                     insert(&mut binary_instructions, 0x00, &mut target_address);
@@ -663,7 +675,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
             }
         }
         if target_label.name.is_empty() {
-            if label_use_name.ends_with("_EndSubroutine") {
+            if label_use_name.ends_with("_EndSR") {
                 // I totally didn't spend like half an hour trying to debug it when I just had the
                 // syntax wrong on subroutines in my test file and added this to make it easier to tell
                 panic!("Could not find label \"{label_use_name}\"! Perhaps you forgot to return from a subroutine?");
@@ -674,8 +686,8 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
         symbol_table.add_label_use(label_use.clone(), target_label.clone());
 
         let label_address = target_label.address.to_be_bytes();
-        binary_instructions[label_use.index as usize] = label_address[1];
-        binary_instructions[(label_use.index - 1) as usize] = label_address[0];
+        binary_instructions[(label_use.address_index + 2) as usize] = label_address[1];
+        binary_instructions[(label_use.address_index + 1) as usize] = label_address[0];
     }
     // replace all pointer usages with the value of the pointer
     // part 2 of pass 3 in assembling sequence
@@ -698,12 +710,12 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
         let pointer_address_bytes = pointer_address.address.to_bytes();
         match pointer_address.address.size {
             asm_parser::NumberSize::EightBit => {
-                binary_instructions[(pointer_use.index - 1) as usize] = pointer_address_bytes[0];
-                binary_instructions.remove(pointer_use.index as usize);
+                binary_instructions[(pointer_use.index + 1) as usize] = pointer_address_bytes[0];
+                binary_instructions.remove((pointer_use.index + 2) as usize);
             }
             asm_parser::NumberSize::SixteenBit => {
-                binary_instructions[pointer_use.index as usize] = pointer_address_bytes[1];
-                binary_instructions[(pointer_use.index - 1) as usize] = pointer_address_bytes[0];
+                binary_instructions[(pointer_use.index + 2) as usize] = pointer_address_bytes[1];
+                binary_instructions[(pointer_use.index + 1) as usize] = pointer_address_bytes[0];
             }
         }
     }

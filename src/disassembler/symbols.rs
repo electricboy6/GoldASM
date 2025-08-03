@@ -2,17 +2,17 @@ use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
 use crate::{asm_parser, assembler};
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Default, Clone)]
 pub struct SymbolTable {
-    pub symbols: Vec<Symbol>,
+    pub symbols: HashMap<u16, Symbol>,
     // the u16 is the index of the line in the binary
-    pub symbol_map: HashMap<u16, Symbol>,
+    pub symbol_uses: HashMap<u16, Symbol>,
 }
 impl SymbolTable {
     pub fn new() -> Self {
         SymbolTable {
-            symbols: Vec::new(),
-            symbol_map: HashMap::new(),
+            symbols: HashMap::new(),
+            symbol_uses: HashMap::new(),
         }
     }
     pub fn to_bytes(&self) -> Vec<u8> {
@@ -22,14 +22,14 @@ impl SymbolTable {
         rmp_serde::from_slice(bytes).unwrap()
     }
     pub fn add_define(&mut self, define: assembler::AssemblerDefine) {
-        self.symbols.push(Symbol {
+        self.symbols.insert(define.value.parse().unwrap_or(0), Symbol {
             name: define.name,
             value: define.value,
             symbol_type: SymbolType::Define,
         });
     }
     pub fn add_pointer_use(&mut self, pointer_use: assembler::AssemblerPointerUse, pointer: assembler::AssemblerDefine) {
-        self.symbol_map.insert(
+        self.symbol_uses.insert(
             pointer_use.index,
             Symbol {
                 name: pointer.name,
@@ -39,16 +39,26 @@ impl SymbolTable {
         );
     }
     pub fn add_label(&mut self, label: assembler::AssemblerLabel) {
-        self.symbols.push(Symbol {
-            name: label.name,
-            value: label.address.to_string(),
-            symbol_type: SymbolType::Label,
-        });
+        if label.name.ends_with("_EndSR") {
+            self.symbols.insert(label.address - 1,
+                                Symbol {
+                                    name: label.name,
+                                    value: label.address.to_string(),
+                                    symbol_type: SymbolType::Label,
+                                });
+        } else {
+            self.symbols.insert(label.address,
+                                Symbol {
+                                    name: label.name,
+                                    value: label.address.to_string(),
+                                    symbol_type: SymbolType::Label,
+                                });
+        }
     }
     pub fn add_label_use(&mut self, label_use: assembler::AssemblerLabelUse, label: assembler::AssemblerLabel) {
-        if label.name.ends_with("_Subroutine") {
-            self.symbol_map.insert(
-                label_use.index,
+        if label.name.ends_with("_SR") {
+            self.symbol_uses.insert(
+                label_use.instruction_index - 1,
                 Symbol {
                     name: label.name,
                     value: label.address.to_string(),
@@ -56,8 +66,8 @@ impl SymbolTable {
                 }
             );
         } else {
-            self.symbol_map.insert(
-                label_use.index,
+            self.symbol_uses.insert(
+                label_use.instruction_index,
                 Symbol {
                     name: label.name,
                     value: label.address.to_string(),
@@ -68,14 +78,14 @@ impl SymbolTable {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct Symbol {
     pub name: String,
     pub value: String,
     pub symbol_type: SymbolType
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum SymbolType {
     Label,
     Pointer,
