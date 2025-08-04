@@ -21,19 +21,19 @@ impl SymbolTable {
     pub fn from_bytes(bytes: &[u8]) -> Self {
         rmp_serde::from_slice(bytes).unwrap()
     }
-    pub fn add_define(&mut self, define: assembler::AssemblerDefine) {
+    pub fn add_define(&mut self, define: asm_parser::Define) {
         self.symbols.insert(define.value.parse().unwrap_or(0), Symbol {
             name: define.name,
             value: define.value,
             symbol_type: SymbolType::Define,
         });
     }
-    pub fn add_define_use(&mut self, pointer_use: assembler::AssemblerDefineUse, pointer: assembler::AssemblerDefine) {
+    pub fn add_define_use(&mut self, define_use: asm_parser::DefineUse, define: asm_parser::Define) {
         self.symbol_uses.insert(
-            pointer_use.index,
+            define_use.index,
             Symbol {
-                name: pointer.name,
-                value: asm_parser::Address::from_str(&pointer.value).address.to_decimal().to_string(),
+                name: define.name,
+                value: asm_parser::Address::from_str(&define.value).address.to_decimal().to_string(),
                 symbol_type: SymbolType::Pointer,
             }
         );

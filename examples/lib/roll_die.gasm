@@ -1,21 +1,47 @@
 #define OUT %FF
 
-sr FORWARD:
+sr INIT:
+    // store register and accumulator
     phr 00
-    phr 01
-    cpa 01
+    cpa 00
+    phr 00
 
+    lda #B3 // initial seed
+    sta *OUT
+
+    // reset register and accumulator
+    plr 00
+    cpr 00
+    plr 00
+    rts INIT
+
+// source for this rng: http://www.6502.org/users/mycorner/6502/code/prng.html
+sr FORWARD:
+    // store register and accumulator
+    phr 00
+    cpa 00
+    phr 00
+
+    // load seed, shift left
     lda *OUT
     shl
+    // if no carry, skip the xor
     bcc ~END
+    // there is a carry, time to xor
     cpa 00
-    lda #03
+
+    lda #CF
+
     xor 00
-    cpr 00
+
+    // reset the carry flag
+    clc
 END:
+    // update the seed
     sta *OUT
-    cpa 05
-    cpr 01
-    plr 01
+
+    // reset register and accumulator
+    plr 00
+    cpr 00
     plr 00
     rts FORWARD

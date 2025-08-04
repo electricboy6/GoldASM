@@ -23,18 +23,6 @@ pub struct AssemblerLabelUse {
     pub address_index: u16,
     pub instruction_index: u16
 }
-#[derive(Clone, PartialEq, Debug)]
-pub struct AssemblerDefineUse {
-    pub pointer: asm_parser::Pointer,
-    // INVARIANT: there MUST be an area of the correct size reserved for the pointer's address
-    pub index: u16
-}
-#[derive(Clone, PartialEq, Debug)]
-pub struct AssemblerDefine {
-    pub name: String,
-    pub value: String,
-}
-
 
 /// Replaces subroutines and rts's with their corresponding jumps and stack pushes/pops
 // assembler pass 1
@@ -88,11 +76,6 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16, mut symbol_table: Sym
     let mut labels = Vec::new();
     // make the vector of label usages
     let mut label_uses = Vec::new();
-    
-    // make the vector of defines
-    let mut defines = Vec::new();
-    // make the vector of pointer usages
-    let mut pointer_uses = Vec::new();
     
     // make the vector of origin starts
     let mut origins = Vec::new();
@@ -220,14 +203,6 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16, mut symbol_table: Sym
             }
             Instruction::LoadAccumulator(address, immediate) => {
                 if let Some(address) = address {
-                    // address starts at the byte after the one byte opcode
-                    // need to do it before pushing the opcode so we don't have to decode the number size
-                    if let Some(pointer) = address.pointer {
-                        pointer_uses.push(AssemblerDefineUse {
-                            pointer,
-                            index: target_address as u16
-                        });
-                    }
                     match address.mode {
                         AddressMode::Absolute => {
                             insert(&mut binary_instructions, 0x23, &mut target_address);
@@ -256,14 +231,6 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16, mut symbol_table: Sym
                 }
             }
             Instruction::StoreAccumulator(address) => {
-                // address starts at the byte after the one byte opcode
-                // need to do it before pushing the opcode so we don't have to decode the number size
-                if let Some(pointer) = address.pointer {
-                    pointer_uses.push(AssemblerDefineUse {
-                        pointer,
-                        index: target_address as u16
-                    });
-                }
                 match address.mode {
                     AddressMode::Absolute => {
                         insert(&mut binary_instructions, 0x28, &mut target_address);
@@ -621,12 +588,6 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16, mut symbol_table: Sym
                     address: target_address as u16
                 });
             }
-            Instruction::Define(name, value) => {
-                defines.push(AssemblerDefine {
-                    name,
-                    value,
-                });
-            }
             Instruction::Word(value) => {
                 insert(&mut binary_instructions, value.value.to_decimal() as u8, &mut target_address);
             }
@@ -685,43 +646,9 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16, mut symbol_table: Sym
         binary_instructions[(label_use.address_index + 2) as usize] = label_address[1];
         binary_instructions[(label_use.address_index + 1) as usize] = label_address[0];
     }
-    // replace all pointer usages with the value of the pointer
-    // part 2 of pass 3 in assembling sequence
-    for pointer_use in pointer_uses {
-        let mut target_pointer = &AssemblerDefine{ name: "".to_string(), value: "".to_string() };
-        for pointer in defines.iter() {
-            if pointer.name == pointer_use.pointer.name {
-                target_pointer = pointer;
-                break;
-            }
-        }
-        if target_pointer.name.is_empty() {
-            panic!("Could not find pointer \"{}\"!", pointer_use.pointer.name);
-        }
-
-        symbol_table.add_define_use(pointer_use.clone(), target_pointer.clone());
-
-        let pointer_address = asm_parser::PointerAddress::from_str(&target_pointer.value);
-
-        let pointer_address_bytes = pointer_address.address.to_bytes();
-        match pointer_address.address.size {
-            asm_parser::NumberSize::EightBit => {
-                binary_instructions[(pointer_use.index + 1) as usize] = pointer_address_bytes[0];
-                binary_instructions.remove((pointer_use.index + 1) as usize);
-                binary_instructions.insert(0xFFFB, 00);
-            }
-            asm_parser::NumberSize::SixteenBit => {
-                binary_instructions[(pointer_use.index + 2) as usize] = pointer_address_bytes[1];
-                binary_instructions[(pointer_use.index + 1) as usize] = pointer_address_bytes[0];
-            }
-        }
-    }
     // fill out the symbol table
     for label in labels {
         symbol_table.add_label(label);
-    }
-    for define in defines {
-        symbol_table.add_define(define);
     }
     
     if binary_instructions.len() > size as usize + 1 {

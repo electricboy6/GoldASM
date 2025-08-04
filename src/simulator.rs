@@ -92,7 +92,7 @@ impl App {
             "<A>".blue().bold(),
             " Stop Auto Run ".into(),
             "<P>".blue().bold(),
-            " Send message ".into(),
+            " Edit tx buffer ".into(),
             "<S>".blue().bold(),
             " Reset ".into(),
             "<Space>".blue().bold(),

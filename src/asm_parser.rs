@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 use ratatui::crossterm::style::Stylize;
-use crate::assembler::{AssemblerDefine, AssemblerDefineUse};
 use crate::disassembler::symbols::{SymbolTable};
 
 #[derive(Debug, PartialEq)]
@@ -329,7 +328,10 @@ pub enum Instruction {
     Word(Immediate),
     PopProgramCounterSubroutine,
 }
+// todo: do the same thing for the symbol table as we do for the includes (join together all tables from all included files)
+// also todo: calculate the indices of the define uses in the assembler so the locations are accurate
 pub fn preprocess(directory: &str, filename: &str) -> (String, SymbolTable) {
+    let module_name_dot = &*(filename.strip_suffix(".gasm").unwrap().to_string() + ".");
     let content = std::fs::read_to_string(directory.to_string() + filename).expect("File not found.");
 
     let mut defines = HashMap::new();
@@ -349,8 +351,8 @@ pub fn preprocess(directory: &str, filename: &str) -> (String, SymbolTable) {
         if line.contains("#define") {
             // pointer creation
             defines.insert(words[1], words[2]);
-            symbol_table.add_define(AssemblerDefine {
-                name: words[1].to_string(),
+            symbol_table.add_define(Define {
+                name: module_name_dot.to_string() + words[1],
                 value: words[2].to_string(),
             })
         }
@@ -365,15 +367,15 @@ pub fn preprocess(directory: &str, filename: &str) -> (String, SymbolTable) {
             result.push(split_line.0);
             result.push(*defines.get(split_line.1).unwrap());
             result.push("\n");
-            symbol_table.add_define_use(AssemblerDefineUse {
-                pointer: Pointer {
-                    name: "".to_string(),
-                    address: None,
+            symbol_table.add_define_use(DefineUse {
+                define: Define {
+                    name: module_name_dot.to_string() + split_line.1,
+                    value: String::new(),
                 },
-                index: 0,
-            }, AssemblerDefine {
-                name: "".to_string(),
-                value: "".to_string(),
+                index: index as u16,
+            }, Define {
+                name: module_name_dot.to_string() + split_line.1,
+                value: (*defines.get(split_line.1).unwrap()).to_string(),
             })
         } else {
             result.push(raw_line);

@@ -2,6 +2,7 @@
 #define RESETVEC %FFFC
 
 .org %0200
+jsr ~roll_die.INIT
 LOOP:
     jsr ~roll_die.FORWARD
     jmp ~LOOP
