@@ -1,0 +1,13 @@
+#include lib/roll_die.gasm
+#define RESETVEC %FFFC
+
+.org %0200
+LOOP:
+    jsr ~roll_die.FORWARD
+    jmp ~LOOP
+
+.org *RESETVEC
+.word #02
+.word #00
+
+.org

@@ -1,0 +1,21 @@
+#define OUT %FF
+
+sr FORWARD:
+    phr 00
+    phr 01
+    cpa 01
+
+    lda *OUT
+    shl
+    bcc ~END
+    cpa 00
+    lda #03
+    xor 00
+    cpr 00
+END:
+    sta *OUT
+    cpa 05
+    cpr 01
+    plr 01
+    plr 00
+    rts FORWARD

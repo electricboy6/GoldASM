@@ -1,7 +1,7 @@
-#define OUT_BYTE %FF00
-#define NEW_DATA %FF01
-#define BLOCK %FF02
-#define BUSY %FF03
+#define OUT_BYTE   %FF00
+#define NEW_DATA   %FF01
+#define BLOCK      %FF02
+#define BUSY       %FF03
 
 // 1 byte only
 sr SEND_NUMBER:
@@ -27,15 +27,15 @@ sr SEND_BYTE:
     lda #00
     cpa 01
 SPINLOCK:
-    lda %*BUSY
+    lda *BUSY
     bne 01, ~SPINLOCK
     // no longer busy, so get ready to send
     // load the byte to send
     cpr 00
-    sta %*OUT_BYTE
+    sta *OUT_BYTE
     // add it to the fifo
     lda #01
-    sta %*NEW_DATA
+    sta *NEW_DATA
     // we're done
 
     // restore the registers

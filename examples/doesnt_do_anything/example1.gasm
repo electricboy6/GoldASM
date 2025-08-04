@@ -1,13 +1,13 @@
 #include dependency.gasm
 
-#define test_value_1 %1234
+#define test_value_1 #1234
 .org %0200
 // init subroutine
 sr INIT:
     lda #0C
     sta %0101
     lda $0101, 07
-    sta $*test_value_1, 02 // this line is the current broken one
+    sta *test_value_1 // this line is the current broken one
     lda $^01010011, 03
     add 02
     sta %03

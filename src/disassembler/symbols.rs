@@ -28,7 +28,7 @@ impl SymbolTable {
             symbol_type: SymbolType::Define,
         });
     }
-    pub fn add_pointer_use(&mut self, pointer_use: assembler::AssemblerPointerUse, pointer: assembler::AssemblerDefine) {
+    pub fn add_define_use(&mut self, pointer_use: assembler::AssemblerDefineUse, pointer: assembler::AssemblerDefine) {
         self.symbol_uses.insert(
             pointer_use.index,
             Symbol {

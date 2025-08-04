@@ -47,10 +47,10 @@ sr MULT_BY_7:
     clc
     // multiply by 8
     // shift #1 (effective multiply by 2)
-    lda %*mult_7_in_low
+    lda *mult_7_in_low
     shl
     cpa 00
-    lda %*mult_7_in_high
+    lda *mult_7_in_high
     shl
     cpa 01
     // shift #2 (effective multiply by 4)
@@ -69,7 +69,7 @@ sr MULT_BY_7:
     cpa 01
 
     // todo subtract original value
-    lda %*mult_7_in_high
+    lda *mult_7_in_high
     sub 01
     // do something about carry
 

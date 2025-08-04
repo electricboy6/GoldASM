@@ -1,5 +1,7 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use ratatui::crossterm::style::Stylize;
+use crate::assembler::{AssemblerDefine, AssemblerDefineUse};
+use crate::disassembler::symbols::{SymbolTable};
 
 #[derive(Debug, PartialEq)]
 pub struct Includes {
@@ -260,6 +262,16 @@ pub struct PointerAddress {
     pub mode: AddressMode,
     pub index: Option<Register>
 }
+#[derive(Debug, PartialEq, Clone)]
+pub struct Define {
+    pub name: String,
+    pub value: String,
+}
+#[derive(Debug, PartialEq, Clone)]
+pub struct DefineUse {
+    pub index: u16,
+    pub define: Define
+}
 impl PointerAddress {
     pub fn from_str(value: &str) -> PointerAddress {
         let address = Address::from_str(value);
@@ -317,7 +329,59 @@ pub enum Instruction {
     Word(Immediate),
     PopProgramCounterSubroutine,
 }
+pub fn preprocess(directory: &str, filename: &str) -> (String, SymbolTable) {
+    let content = std::fs::read_to_string(directory.to_string() + filename).expect("File not found.");
 
+    let mut defines = HashMap::new();
+    let mut symbol_table = SymbolTable::new();
+
+    for raw_line in content.lines() {
+        // strip out leading and trailing whitespace, as well as comments
+        let line = raw_line.splitn(2, "//").next().unwrap_or("").trim();
+        if line.is_empty() {
+            continue;
+        }
+
+        // line split by whitespace
+        let words =  line.split_whitespace().collect::<Vec<&str>>();
+
+        // pointer definition logic
+        if line.contains("#define") {
+            // pointer creation
+            defines.insert(words[1], words[2]);
+            symbol_table.add_define(AssemblerDefine {
+                name: words[1].to_string(),
+                value: words[2].to_string(),
+            })
+        }
+    }
+    let mut result = Vec::new();
+    for (index, raw_line) in content.lines().enumerate() {
+        if raw_line.contains("#define") {
+            continue;
+        }
+        let split_line = raw_line.split_once('*').unwrap_or(("", ""));
+        if defines.contains_key(split_line.1) {
+            result.push(split_line.0);
+            result.push(*defines.get(split_line.1).unwrap());
+            result.push("\n");
+            symbol_table.add_define_use(AssemblerDefineUse {
+                pointer: Pointer {
+                    name: "".to_string(),
+                    address: None,
+                },
+                index: 0,
+            }, AssemblerDefine {
+                name: "".to_string(),
+                value: "".to_string(),
+            })
+        } else {
+            result.push(raw_line);
+            result.push("\n");
+        }
+    }
+    (String::from_iter(result), symbol_table)
+}
 pub fn postprocess(instructions: Vec<Instruction>, includes: Includes) -> Vec<Instruction> {
     let mut final_instructions = instructions;
     let mut included_instructions = includes.instructions;
@@ -329,11 +393,11 @@ pub fn postprocess(instructions: Vec<Instruction>, includes: Includes) -> Vec<In
     final_instructions
 }
 
-pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
+pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes, SymbolTable) {
+    let (content, symbol_table) = preprocess(directory, filename);
     println!("INFO: Parsing file {}", directory.to_string() + filename);
+
     let module_name_dot = &*(filename.strip_suffix(".gasm").unwrap().to_string() + ".");
-    
-    let content = std::fs::read_to_string(directory.to_string() + filename).expect("File not found.");
     
     let mut instructions: Vec<Instruction> = Vec::new();
     let mut includes = Includes::new();
@@ -390,13 +454,6 @@ pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
         // rest of line after the instruction is interpreted
         // defaults to empty strings so instructions with no parameters won't panic
         let parameter_str = line.split_once(" ").unwrap_or(("", "")).1;
-
-        // pointer definition logic
-        if line.contains("#define") {
-            // pointer creation
-            instructions.push(Instruction::Define( module_name_dot.to_string() + words[1], words[2].to_string()));
-            continue;
-        }
 
         // origin logic
         // if no origin address set, continue at lowest unused address above the first .org
@@ -824,7 +881,7 @@ pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes) {
             }
         }
     }
-    (instructions, includes)
+    (instructions, includes, symbol_table)
 }
 
 fn parse_register_or_2_register_instruction(words: Vec<&str>) -> (Option<Register>, Option<(Register, Register)>) {

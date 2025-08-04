@@ -44,7 +44,7 @@ fn main() {
             
             let instructions = asm_parser::postprocess(parsed_values.0, parsed_values.1);
             
-            let (binary_instructions, symbol_table) = assembler::assemble(instructions, *output_size);
+            let (binary_instructions, symbol_table) = assembler::assemble(instructions, *output_size, parsed_values.2);
             
             assembler::write(&binary_instructions, &directory, &(output_file.to_string() + ".bin"));
             assembler::write(&symbol_table.to_bytes(), &directory, &(output_file.to_string() + ".symbols"));

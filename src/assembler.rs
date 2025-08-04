@@ -24,7 +24,7 @@ pub struct AssemblerLabelUse {
     pub instruction_index: u16
 }
 #[derive(Clone, PartialEq, Debug)]
-pub struct AssemblerPointerUse {
+pub struct AssemblerDefineUse {
     pub pointer: asm_parser::Pointer,
     // INVARIANT: there MUST be an area of the correct size reserved for the pointer's address
     pub index: u16
@@ -73,7 +73,7 @@ pub fn preprocess(instructions: Vec<Instruction>) -> Vec<Instruction> {
     resulting_instructions
 }
 
-pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTable) {
+pub fn assemble(instructions: Vec<Instruction>, size: u16, mut symbol_table: SymbolTable) -> (Vec<u8>, SymbolTable) {
     println!("INFO: Assembling combined files");
     // preprocess
     let processed_instructions = preprocess(instructions);
@@ -101,9 +101,6 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
     let mut target_address: usize = 0;
     // max point in memory where we can insert
     let mut max_address: usize = size as usize;
-
-    // self-evident
-    let mut symbol_table = SymbolTable::new();
 
     // iterate through the instructions and insert as we go (assembler pass 2)
     // this is long not because it is complicated, but because there are a lot of instructions to parse
@@ -226,7 +223,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
                     // address starts at the byte after the one byte opcode
                     // need to do it before pushing the opcode so we don't have to decode the number size
                     if let Some(pointer) = address.pointer {
-                        pointer_uses.push(AssemblerPointerUse {
+                        pointer_uses.push(AssemblerDefineUse {
                             pointer,
                             index: target_address as u16
                         });
@@ -262,7 +259,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
                 // address starts at the byte after the one byte opcode
                 // need to do it before pushing the opcode so we don't have to decode the number size
                 if let Some(pointer) = address.pointer {
-                    pointer_uses.push(AssemblerPointerUse {
+                    pointer_uses.push(AssemblerDefineUse {
                         pointer,
                         index: target_address as u16
                     });
@@ -702,7 +699,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
             panic!("Could not find pointer \"{}\"!", pointer_use.pointer.name);
         }
 
-        symbol_table.add_pointer_use(pointer_use.clone(), target_pointer.clone());
+        symbol_table.add_define_use(pointer_use.clone(), target_pointer.clone());
 
         let pointer_address = asm_parser::PointerAddress::from_str(&target_pointer.value);
 
@@ -710,7 +707,8 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16) -> (Vec<u8>, SymbolTa
         match pointer_address.address.size {
             asm_parser::NumberSize::EightBit => {
                 binary_instructions[(pointer_use.index + 1) as usize] = pointer_address_bytes[0];
-                binary_instructions.remove((pointer_use.index + 2) as usize);
+                binary_instructions.remove((pointer_use.index + 1) as usize);
+                binary_instructions.insert(0xFFFB, 00);
             }
             asm_parser::NumberSize::SixteenBit => {
                 binary_instructions[(pointer_use.index + 2) as usize] = pointer_address_bytes[1];

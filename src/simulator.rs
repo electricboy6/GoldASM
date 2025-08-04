@@ -352,9 +352,6 @@ impl App {
     }
 
     fn handle_key_event(&mut self, key_event: KeyEvent) {
-        if !key_event.is_press() {
-            return;
-        }
         if !self.send_mode {
             if key_event.code == KeyCode::Char('s') {
                 self.send_mode = true;
