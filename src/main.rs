@@ -6,6 +6,7 @@ mod simulator;
 mod disassembler;
 
 use clap::{arg, Command, Arg, value_parser};
+use crate::disassembler::symbols::SymbolTable;
 
 fn main() {
     let matches = Command::new("GoldASM Assembler")
@@ -40,11 +41,11 @@ fn main() {
             let filename = target_file.rsplitn(2, '/').next().unwrap();
             println!("INFO: Assembling file \"{filename}\" in directory \"{}\"", directory.strip_suffix('/').unwrap_or(&directory));
             
-            let parsed_values = asm_parser::parse(&directory, filename);
+            let parsed_values = asm_parser::parse(&directory, filename, SymbolTable::new());
             
-            let instructions = asm_parser::postprocess(parsed_values.0, parsed_values.1);
+            let instructions = asm_parser::postprocess(parsed_values.0, parsed_values.2, parsed_values.1);
             
-            let (binary_instructions, symbol_table) = assembler::assemble(instructions, *output_size, parsed_values.2);
+            let (binary_instructions, symbol_table) = assembler::assemble(instructions.0, *output_size, instructions.1);
             
             assembler::write(&binary_instructions, &directory, &(output_file.to_string() + ".bin"));
             assembler::write(&symbol_table.to_bytes(), &directory, &(output_file.to_string() + ".symbols"));

@@ -6,27 +6,33 @@ use crate::disassembler::symbols::{SymbolTable};
 pub struct Includes {
     files: HashSet<String>,
     instructions: Vec<Vec<Instruction>>,
+    symbol_tables: Vec<SymbolTable>,
 }
 impl Includes {
     pub fn new() -> Includes {
         Includes {
             files: HashSet::new(),
             instructions: Vec::new(),
+            symbol_tables: Vec::new(),
         }
     }
     pub fn parse_include(&mut self, line: &str, directory: &str) {
         let target_file = line.strip_prefix("#include ").unwrap().trim();
         if self.files.insert(target_file.to_string()) {
-            let parsed_file = parse(directory, target_file);
+            let parsed_file = parse(directory, target_file, SymbolTable::new());
             // deal with this file
             let parsed_instructions = parsed_file.0;
             self.instructions.push(parsed_instructions);
+            self.symbol_tables.push(parsed_file.2);
             for file in parsed_file.1.files {
                 self.files.insert(file);
             }
-            // deal with the includes of this file (hopefully my logic is correct here)
+            // deal with the includes of this file
             for instructions in parsed_file.1.instructions {
                 self.instructions.push(instructions);
+            }
+            for symbol_table in parsed_file.1.symbol_tables {
+                self.symbol_tables.push(symbol_table);
             }
         }
     }
@@ -328,14 +334,14 @@ pub enum Instruction {
     Word(Immediate),
     PopProgramCounterSubroutine,
 }
-// todo: do the same thing for the symbol table as we do for the includes (join together all tables from all included files)
-// also todo: calculate the indices of the define uses in the assembler so the locations are accurate
-pub fn preprocess(directory: &str, filename: &str) -> (String, SymbolTable) {
+// todo: calculate the indices of the define uses in the assembler so the locations are accurate
+pub fn preprocess(directory: &str, filename: &str, symbol_table: SymbolTable) -> (String, SymbolTable) {
     let module_name_dot = &*(filename.strip_suffix(".gasm").unwrap().to_string() + ".");
     let content = std::fs::read_to_string(directory.to_string() + filename).expect("File not found.");
 
+    let mut symbol_table = symbol_table;
+
     let mut defines = HashMap::new();
-    let mut symbol_table = SymbolTable::new();
 
     for raw_line in content.lines() {
         // strip out leading and trailing whitespace, as well as comments
@@ -384,19 +390,29 @@ pub fn preprocess(directory: &str, filename: &str) -> (String, SymbolTable) {
     }
     (String::from_iter(result), symbol_table)
 }
-pub fn postprocess(instructions: Vec<Instruction>, includes: Includes) -> Vec<Instruction> {
+pub fn postprocess(instructions: Vec<Instruction>, symbol_table: SymbolTable, includes: Includes) -> (Vec<Instruction>, SymbolTable) {
     let mut final_instructions = instructions;
+    let mut final_symbol_table = symbol_table;
     let mut included_instructions = includes.instructions;
+    let included_tables = includes.symbol_tables;
     
     for included_instructions in included_instructions.iter_mut() {
         final_instructions.append(included_instructions);
     }
-    
-    final_instructions
+    for included_table in included_tables.into_iter() {
+        for symbol in included_table.symbols.into_iter() {
+            final_symbol_table.symbols.insert(symbol.0, symbol.1);
+        }
+        for symbol_use in included_table.symbol_uses.into_iter() {
+            final_symbol_table.symbol_uses.insert(symbol_use.0, symbol_use.1);
+        }
+    }
+
+    (final_instructions, final_symbol_table)
 }
 
-pub fn parse(directory: &str, filename: &str) -> (Vec<Instruction>, Includes, SymbolTable) {
-    let (content, symbol_table) = preprocess(directory, filename);
+pub fn parse(directory: &str, filename: &str, symbol_table: SymbolTable) -> (Vec<Instruction>, Includes, SymbolTable) {
+    let (content, symbol_table) = preprocess(directory, filename, symbol_table);
     println!("INFO: Parsing file {}", directory.to_string() + filename);
 
     let module_name_dot = &*(filename.strip_suffix(".gasm").unwrap().to_string() + ".");

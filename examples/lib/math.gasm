@@ -1,4 +1,69 @@
-// 1 byte
+#define NUM1_HIGH   %80
+#define NUM1_LOW    %81
+#define NUM2_HIGH   %82
+#define NUM2_LOW    %83 // only num2 low is used for mult
+#define RESULT_HIGH %84
+#define RESULT_LOW  %85
+#define REM_HIGH    %86
+#define REM_LOW     %87
+
+// 2 byte / 2 byte = 2 byte result, 2 byte remainder
 sr DIVIDE:
+// initialize remainder to 0
+    lda #00
+    sta *REM_HIGH
+    sta *REM_LOW
+    lda #16
+    cpa 00
+L1:
+    lda *NUM1_HIGH
+    shl
+    lda *NUM1_LOW
+    rol
+    lda *REM_HIGH
+    rol
+    lda *REM_LOW
+    rol
+    lda *REM_HIGH
+    sc
+    cpa 01
+    lda *NUM2_HIGH
+
+
     // todo: write it
     rts DIVIDE
+
+// todo: test
+sr MULT_16_8:       // source: omult29 from TobyLobster's multiply test repo
+    lda #00
+    sta *RESULT_HIGH
+    sta *RESULT_LOW
+    lda #08
+    cpa 00
+    lda #01
+    cpa 01
+    lda *NUM2_HIGH
+    cpa 03
+    lda *NUM2_LOW
+    cpa 04
+JJ1:
+    lda *RESULT_HIGH
+    shl
+    lda *RESULT_LOW
+    rol
+    shl
+    bcc ~JJ2
+    cpa 02
+    clc
+    lda *RESULT_HIGH
+    add 03
+    sta *RESULT_HIGH
+    lda *RESULT_LOW
+    add 04
+    sta *RESULT_LOW
+    cpr 02
+JJ2:
+    cpr 00
+    sub 00, 01
+    bnz ~JJ1
+    rts MULT_16_8
