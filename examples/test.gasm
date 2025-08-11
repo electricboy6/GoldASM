@@ -1,12 +1,36 @@
-#include lib/roll_die.gasm
+#include lib/2byte_to_ascii.gasm
 #define RESETVEC %FFFC
 
 .org %0200
-jsr ~roll_die.INIT
-LOOP:
-    jsr ~roll_die.FORWARD
-    jmp ~LOOP
+lda #A8
+sta %00
+lda #94
+sta %01
 
+lda #0a
+sta %10
+
+jsr ~2byte_to_ascii.DIV_16_7
+lda %11
+cpa 07
+lda %20
+cpa 04
+lda %21
+cpa 05
+
+//lda #a8
+//sta %80
+//lda #94
+//sta %81
+//jsr ~2byte_to_ascii.PRINT_2_BYTES
+
+jmp ~END
+
+// program is over, just loop forever
+.org %FFF8
+END:
+    noop
+    jmp ~END
 .org *RESETVEC
 .word #02
 .word #00

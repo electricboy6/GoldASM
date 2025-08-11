@@ -1,0 +1,116 @@
+#include lib/serial_out.gasm
+
+#define DIV_HIGH        %00
+#define DIV_LOW         %01
+#define DIV_TEMP        %02
+
+#define DIV_RET_HIGH    %20
+#define DIV_RET_LOW     %21
+
+#define DIVIDEND        %10
+#define REMAINDER       %11
+
+#define ASCII_IN_HIGH   %80
+#define ASCII_IN_LOW    %81
+#define ASCII_TEMP      %82
+
+// todo: optimize this code
+// todo: currently broken
+sr DIV_16_7:
+    phr 00
+    cpa 00
+    phr 00
+
+    lda *DIVIDEND
+    cpa 00
+
+    lda #00
+    sta *DIV_TEMP
+// repeatedly shift left into DIV_TEMP, try division, if it works, save back to DIV_TEMP, otherwise keep shifting and trying
+// repeat until there's nothing left to shift in
+DIVLOOP:
+// shift everything over
+    lda *DIV_LOW
+    shl
+    sta *DIV_LOW
+    lda *DIV_HIGH
+    shl
+    sta *DIV_HIGH
+    lda *DIV_TEMP
+    shl
+    sta *DIV_TEMP
+TRY_SUB:
+    lda *DIV_TEMP
+    clc // make sure the shifts can't screw up the subtraction (may be impossible)
+    sub 00
+    // if the carry is set, we needed a carry in
+    bcs ~SUB_FAILED
+    // subtraction succeeded
+    clc
+    sta *DIV_TEMP
+    sc
+    jmp ~NEXT
+SUB_FAILED:
+    clc
+NEXT:
+// store the result of this iteration
+    lda *DIV_RET_LOW
+    shl
+    sta *DIV_RET_LOW
+    lda *DIV_RET_HIGH
+    shl
+    sta *DIV_RET_HIGH
+    clc
+// if there still is stuff to shift, keep going
+    lda *DIV_HIGH
+    bnz ~DIVLOOP
+
+    lda *DIV_TEMP
+    sta *REMAINDER
+
+    plr 00
+    cpr 00
+    plr 00
+
+    rts DIV_16_7
+
+sr PRINT_2_BYTES:
+    lda #0a
+    sta *DIVIDEND
+PRINT_LOOP:
+    lda *ASCII_IN_HIGH
+    sta *DIV_HIGH
+    lda *ASCII_IN_LOW
+    sta *DIV_LOW
+
+    jsr ~DIV_16_7
+    lda *REMAINDER
+
+// if return is zero, we're done (also store for the next iteration)
+    lda *DIV_RET_HIGH
+    cpa 04 // todo debug
+    sta *ASCII_IN_HIGH
+    cpa 00
+    lda *DIV_RET_LOW
+    cpa 05 // todo debug
+    sta *ASCII_IN_LOW
+    or 04, 05
+    bze ~END
+// otherwise, print the character
+    lda *REMAINDER
+    cpa 07 // todo debug
+    cpa 00
+    lda #30
+    add 00
+    jsr ~serial_out.SEND_BYTE
+// keep printing
+    jmp ~PRINT_LOOP
+END:
+// when we exit, we still have a character to print
+    lda *REMAINDER
+    cpa 00
+    lda #30 // magic value to convert 0-9 to ascii characters 0-9
+    add 00
+    jsr ~serial_out.SEND_BYTE
+
+    rts PRINT_2_BYTES

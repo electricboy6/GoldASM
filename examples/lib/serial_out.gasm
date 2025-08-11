@@ -3,16 +3,6 @@
 #define BLOCK      %FF02
 #define BUSY       %FF03
 
-// 1 byte only
-sr SEND_NUMBER:
-    phr 00
-    phr 01
-
-    // we're done
-    plr 01
-    plr 00
-    rts SEND_NUMBER
-
 sr SEND_BYTE:
     // we use registers 0 and 1, so back them up
     phr 00
