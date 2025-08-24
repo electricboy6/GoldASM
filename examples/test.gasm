@@ -2,15 +2,20 @@
 #define RESETVEC %FFFC
 
 .org %0200
+// load the divisor
 lda #A8
 sta %00
 lda #94
 sta %01
 
+// load the dividend
 lda #0a
 sta %10
 
+// divide
 jsr ~2byte_to_ascii.DIV_16_7
+
+// show the output
 lda %11
 cpa 07
 lda %20

@@ -17,12 +17,8 @@
 // todo: optimize this code
 // todo: currently broken
 sr DIV_16_7:
-    phr 00
-    cpa 00
-    phr 00
-
     lda *DIVIDEND
-    cpa 00
+    cpa 07
 
     lda #00
     sta *DIV_TEMP
@@ -33,21 +29,25 @@ DIVLOOP:
     lda *DIV_LOW
     shl
     sta *DIV_LOW
+        cpa 02
     lda *DIV_HIGH
     shl
     sta *DIV_HIGH
+        cpa 01
     lda *DIV_TEMP
     shl
     sta *DIV_TEMP
+        cpa 00
 TRY_SUB:
     lda *DIV_TEMP
     clc // make sure the shifts can't screw up the subtraction (may be impossible)
-    sub 00
+    sub 07
     // if the carry is set, we needed a carry in
     bcs ~SUB_FAILED
     // subtraction succeeded
     clc
     sta *DIV_TEMP
+        cpa 00
     sc
     jmp ~NEXT
 SUB_FAILED:
@@ -57,9 +57,11 @@ NEXT:
     lda *DIV_RET_LOW
     shl
     sta *DIV_RET_LOW
+        cpa 06
     lda *DIV_RET_HIGH
     shl
     sta *DIV_RET_HIGH
+        cpa 05
     clc
 // if there still is stuff to shift, keep going
     lda *DIV_HIGH
@@ -67,10 +69,7 @@ NEXT:
 
     lda *DIV_TEMP
     sta *REMAINDER
-
-    plr 00
-    cpr 00
-    plr 00
+        cpa 04
 
     rts DIV_16_7
 
