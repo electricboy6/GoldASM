@@ -37,7 +37,7 @@ fn main() {
             let output_file = sub_matches.get_one::<String>("output").unwrap();
             let output_size = sub_matches.get_one::<u16>("size").unwrap();
             
-            let directory = target_file.rsplitn(2, '/').nth(1).unwrap().to_string() + "/";
+            let directory = target_file.rsplitn(2, '/').nth(1).unwrap_or(".").to_string() + "/";
             let filename = target_file.rsplitn(2, '/').next().unwrap();
             println!("INFO: Assembling file \"{filename}\" in directory \"{}\"", directory.strip_suffix('/').unwrap_or(&directory));
             
