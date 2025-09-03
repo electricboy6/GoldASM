@@ -16,6 +16,9 @@ Video demo for Hack Club voters: https://youtu.be/B5GBNrQVszc?si=sB_gBukX7l-n5j-
 - Gives live readouts of the stack, registers, and other important information
 - Full simulated serial port
 
+### Basic usage
+Just run the ``--help`` subcommand, everything else should be obvious after that.
+
 ### What is the Gold ISA?
 - The Gold ISA is a lightweight ISA targeting small FPGAs, especially the Alchitry Au v2 (hence the name)
 - It is designed to be easily used on 8, 16, or 32 bit processors
