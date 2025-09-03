@@ -1,4 +1,6 @@
 # GoldASM
+Video demo for Hack Club voters: https://youtu.be/B5GBNrQVszc?si=sB_gBukX7l-n5j-C
+(in case you don't want to have to run it yourself, this is a great short overview that I recommend watching).
 ### What is GoldASM?
 - GoldASM is an assembler targeting the Gold ISA
 - It is a command line tool written in Rust
