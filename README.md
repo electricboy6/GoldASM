@@ -17,7 +17,7 @@ Video demo for Hack Club voters: https://youtu.be/B5GBNrQVszc?si=sB_gBukX7l-n5j-
 - Full simulated serial port
 
 ### Basic usage
-Just run the ``--help`` subcommand, everything else should be obvious after that.
+Just run the ``--help`` subcommand, everything else should be obvious after that.  
 For voters/reviewers - I HIGHLY recommend either watching the video or just using a demo program (in the examples folder, you'll probably also need the stuff in lib), because you'll otherwise need to learn the language.
 
 ### What is the Gold ISA?
