@@ -18,7 +18,7 @@ Video demo for Hack Club voters: https://youtu.be/B5GBNrQVszc?si=sB_gBukX7l-n5j-
 
 ### Basic usage
 Just run the ``--help`` subcommand, everything else should be obvious after that.  
-For voters/reviewers - I HIGHLY recommend either watching the video or just using a demo program (in the examples folder, you'll probably also need the stuff in lib), because you'll otherwise need to learn the language.
+For voters/reviewers - I HIGHLY recommend either watching the video or just using a demo program (in the examples folder, you'll probably also need the stuff in lib), because you'll otherwise need to learn the language. serialtest.gasm is a good one, when it gets to just looping then it's waiting for input.
 
 ### What is the Gold ISA?
 - The Gold ISA is a lightweight ISA targeting small FPGAs, especially the Alchitry Au v2 (hence the name)
