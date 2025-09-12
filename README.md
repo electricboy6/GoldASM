@@ -1,6 +1,6 @@
 # GoldASM
 Video demo for Hack Club voters: https://youtu.be/B5GBNrQVszc?si=sB_gBukX7l-n5j-C
-(in case you don't want to have to run it yourself, this is a great short overview that I recommend watching).
+(in case you don't want to have to run it yourself, this is a great 1 minute overview that I recommend watching).
 ### What is GoldASM?
 - GoldASM is an assembler targeting the Gold ISA
 - It is a command line tool written in Rust
@@ -20,11 +20,11 @@ Video demo for Hack Club voters: https://youtu.be/B5GBNrQVszc?si=sB_gBukX7l-n5j-
 Just run the ``--help`` subcommand, everything else should be obvious after that.  
 For voters/reviewers - I HIGHLY recommend either watching the video or just using a demo program (in the examples folder, you'll probably also need the stuff in lib), because you'll otherwise need to learn the language. ``serialtest.gasm`` is a good one, when it gets to just looping then it's waiting for input.  
   
-Note - This is a command line tool, do ./GoldASM.(exe)(linux64) in a terminal to run the tool (you'll still need subcommands)
+Note - This is a command line tool, do ``./GoldASM.(exe)(linux64)`` in a terminal to run the tool (you'll still need subcommands)
 
 ### What is the Gold ISA?
 - The Gold ISA is a lightweight ISA targeting small FPGAs, especially the Alchitry Au v2 (hence the name)
-- It is designed to be easily used on 8, 16, or 32 bit processors
+- It is designed for 8 bit processors
 - It is *not* designed to be fast or efficient, just simple and easy to understand
 - It is also *not* particularly stable, and makes **no** guarantees about compatibility
 ### What is the state of development?
