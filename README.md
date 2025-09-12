@@ -20,7 +20,7 @@ Video demo for Hack Club voters: https://youtu.be/B5GBNrQVszc?si=sB_gBukX7l-n5j-
 Just run the ``--help`` subcommand, everything else should be obvious after that.  
 For voters/reviewers - I HIGHLY recommend either watching the video or just using a demo program (in the examples folder, you'll probably also need the stuff in lib), because you'll otherwise need to learn the language. ``serialtest.gasm`` is a good one, when it gets to just looping then it's waiting for input.  
   
-Note - This is a command line tool, do ``.\GoldASM.exe`` on Windows or ``./GoldASM.linux64`` in a terminal to run the tool (you'll still need subcommands)
+Note - This is a command line tool, after downloading the right file for your OS (and probably the examples folder), do ``.\GoldASM.exe`` on Windows or ``./GoldASM.linux64`` in a terminal to run the tool (you'll still need subcommands)
 
 ### What is the Gold ISA?
 - The Gold ISA is a lightweight ISA targeting small FPGAs, especially the Alchitry Au v2 (hence the name)
