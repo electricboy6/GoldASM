@@ -374,7 +374,6 @@ pub fn parse_instruction(memory: &[u8; 65536], program_counter: u16) -> Result<(
         }
         _ => {
             Err(Box::from("parse_error"))
-            //panic!("Found invalid byte while parsing at index {program_counter}! ({:02x?})\n This means that we're probably off by some value, so don't trust the results.", &memory[program_counter-2..program_counter+2]);
         }
     }
 }

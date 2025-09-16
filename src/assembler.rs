@@ -612,7 +612,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16, mut symbol_table: Sym
             _ => eprintln!("{}", format!("ERROR: Unimplemented instruction! ({instruction:?})").red().bold())
         }
         if target_address > max_address {
-            panic!("Tried to overwrite code inside the binary (check your .orgs)!");
+            panic!("Tried to overwrite code inside the binary (check your .org's)!");
         }
     }
 
@@ -652,7 +652,7 @@ pub fn assemble(instructions: Vec<Instruction>, size: u16, mut symbol_table: Sym
     }
     
     if binary_instructions.len() > size as usize + 1 {
-        panic!("Could not fit file in target size!");
+        panic!("Could not fit file in target size (check your .org's)!");
     }
 
     (binary_instructions, symbol_table)

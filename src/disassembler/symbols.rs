@@ -16,10 +16,10 @@ impl SymbolTable {
         }
     }
     pub fn to_bytes(&self) -> Vec<u8> {
-        rmp_serde::to_vec(&self).unwrap()
+        rmp_serde::to_vec(&self).expect("Failed to serialize symbol table!")
     }
     pub fn from_bytes(bytes: &[u8]) -> Self {
-        rmp_serde::from_slice(bytes).unwrap()
+        rmp_serde::from_slice(bytes).expect("Failed to deserialize symbol table!")
     }
     pub fn add_define(&mut self, define: asm_parser::Define) {
         self.symbols.insert(define.value.parse().unwrap_or(0), Symbol {

@@ -173,8 +173,8 @@ impl App {
         while program_counter_value < 0xFF00.max(memory_list_end as u32) {
             // parse the instruction
             let instruction = bin_parser::parse_instruction(&self.cpu.memory, program_counter_value as u16);
-            if instruction.is_ok() {
-                let (parsed_instruction, num_extra_bytes) = instruction.unwrap();
+            if let Ok(instruction) = instruction {
+                let (parsed_instruction, num_extra_bytes) = instruction;
 
                 // if we're at an index after memory_list_start and before memory_list_end, add it to the list
                 if program_counter_value >= memory_list_start as u32 && program_counter_value <= memory_list_end as u32 {
@@ -248,7 +248,7 @@ impl App {
                         symbol.value = "%".to_string() + &symbol.value;
                     }
                     SymbolType::Subroutine => {
-                        symbol.name = "~".to_string() + symbol.name.strip_suffix("_SR").unwrap();
+                        symbol.name = "~".to_string() + symbol.name.strip_suffix("_SR").expect("Somehow had a subroutine ending in the wrong suffix? Report this to me with your source files.");
                         let final_line_vec: Vec<Span> = final_line.into_iter().map(|span| {
                             span.clone().content(span.content.replace(&("%".to_string() + &symbol.value), ""))
                         }).collect();

@@ -52,7 +52,7 @@ impl Processor {
     }
     pub fn step(&mut self) {
         let (instruction, instruction_extra_bytes) = bin_parser::parse_instruction(&self.memory, self.program_counter)
-            .expect("The executor should never reach an invalid byte while executing, check your code!");
+            .expect("The executor should never reach an invalid byte while executing, check your code! (you may have also passed in an invalid file)");
         match instruction {
             Instruction::Add(one_register, two_register) => {
                 if let Some(register) = one_register {
