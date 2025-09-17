@@ -36,10 +36,23 @@ fn main() {
             let target_file = sub_matches.get_one::<String>("sourceFile").unwrap();
             let output_file = sub_matches.get_one::<String>("output").unwrap();
             let output_size = sub_matches.get_one::<u16>("size").unwrap();
-            
-            let directory = target_file.rsplitn(2, '/').nth(1).unwrap_or(".").to_string() + "/";
-            let filename = target_file.rsplitn(2, '/').next().unwrap();
-            println!("INFO: Assembling file \"{filename}\" in directory \"{}\"", directory.strip_suffix('/').unwrap_or(&directory));
+
+            let directory;
+            let filename;
+
+            if cfg!(target_os = "linux") || !target_file.contains('\\') {
+                // linux or windows with forward slashes
+                directory = target_file.rsplitn(2, '/').nth(1).unwrap_or(".").to_string() + "/";
+                filename = target_file.rsplitn(2, '/').next().unwrap();
+                println!("INFO: Assembling file \"{filename}\" in directory \"{}\"", directory.strip_suffix('/').unwrap_or(&directory));
+            } else if cfg!(target_os = "windows") {
+                // windows with backslashes
+                directory = target_file.rsplitn(2, '\\').nth(1).unwrap_or(".").to_string() + "\\";
+                filename = target_file.rsplitn(2, '\\').next().unwrap();
+                println!("INFO: Assembling file \"{filename}\" in directory \"{}\"", directory.strip_suffix('\\').unwrap_or(&directory));
+            } else {
+                panic!("Only linux and windows are supported!");
+            }
             
             let parsed_values = asm_parser::parse(&directory, filename, SymbolTable::new());
             
