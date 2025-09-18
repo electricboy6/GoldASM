@@ -341,7 +341,7 @@ pub enum Instruction {
 // todo: calculate the indices of the define uses in the assembler so the locations are accurate
 pub fn preprocess(directory: &str, filename: &str, symbol_table: SymbolTable) -> (String, SymbolTable) {
     let module_name_dot = &*(filename.strip_suffix(".gasm").expect("Source files must end in .gasm!").to_string() + ".");
-    let content = std::fs::read_to_string(directory.to_string() + filename).expect("File not found.");
+    let content = std::fs::read_to_string(directory.to_string() + filename).unwrap_or_else(|_| panic!("File not found ({directory}{filename})!"));
 
     let mut symbol_table = symbol_table;
 

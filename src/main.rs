@@ -10,8 +10,8 @@ use crate::disassembler::symbols::SymbolTable;
 
 fn main() {
     let matches = Command::new("GoldASM Assembler")
-        .version("0.1.0-dev")
-        .about("Assembler for the Gold assembly language, and tools for using it")
+        .version("0.1.0")
+        .about("Assembler and simulator for the Gold assembly language")
         .propagate_version(true)
         .subcommand_required(true)
         .arg_required_else_help(true)
@@ -24,7 +24,7 @@ fn main() {
         )
         .subcommand(
             Command::new("simulate")
-                .about("Simulate the given binary file")
+                .about("Simulate the given binary file (with an optional symbol table)")
                 .propagate_version(true)
                 .arg_required_else_help(true)
                 .arg(Arg::new("sourceFile").required(true))
@@ -67,6 +67,7 @@ fn main() {
         Some(("simulate", sub_matches)) => {
             let target_file = sub_matches.get_one::<String>("sourceFile").unwrap();
             let symbol_table_file = sub_matches.get_one::<String>("symbolTable");
+
             if let Some(symbol_table_file) = symbol_table_file {
                 println!("Simulating binary file {target_file} with symbol table {symbol_table_file}");
                 simulator::run_with_symbol_table(target_file.clone(), symbol_table_file.clone()).unwrap();
@@ -75,6 +76,6 @@ fn main() {
                 simulator::run(target_file.clone()).unwrap();
             }
         }
-        _ => unreachable!("Subcommand is required"),
+        _ => unreachable!("Subcommand is required, clap should've already panicked."),
     }
 }

@@ -57,7 +57,7 @@ impl App {
     pub fn run_with_symbol_table(&mut self, terminal: &mut DefaultTerminal, binary_path: String, table_path: String) -> io::Result<()> {
         self.binary_path = binary_path;
 
-        let symbol_table_file = std::fs::read(table_path).expect("File not found.");
+        let symbol_table_file = std::fs::read(&table_path).unwrap_or_else(|_| panic!("Symbol table not found ({table_path})!"));
         self.symbol_table = SymbolTable::from_bytes(&symbol_table_file);
 
         self.reset();
@@ -408,7 +408,7 @@ impl App {
     }
     fn reset(&mut self) {
         self.cpu = Processor::default();
-        let content = std::fs::read(&self.binary_path).expect("File not found.");
+        let content = std::fs::read(&self.binary_path).unwrap_or_else(|_| panic!("Binary not found ({})!", self.binary_path));
         for (index, byte) in content.iter().enumerate() {
             self.cpu.memory[index] = *byte;
         }
