@@ -21,7 +21,7 @@ Video demo for Hack Club voters: https://youtu.be/B5GBNrQVszc?si=sB_gBukX7l-n5j-
 - Full simulated serial port
 
 ### Basic usage
-For voters/reviewers - I HIGHLY recommend either watching the video or just using a demo program (in the examples folder, you'll probably also need the stuff in lib), because you'll otherwise need to learn the language. ``serialtest.gasm`` is a good one, when it gets to just looping then it's waiting for input.
+For voters/reviewers - I HIGHLY recommend either watching the video or just using a demo program (download the examples zip and unzip it), because you'll otherwise need to learn the language. ``serialtest.gasm`` is what I would recommend using. When it gets to just looping then it's waiting for input (press ``s`` to add something to the transmit buffer).
 
 Note - This is a command line tool, after downloading the right file for your OS (and probably the examples folder), run the correct command in a terminal to run the tool
 
