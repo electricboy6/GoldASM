@@ -4,6 +4,7 @@ mod asm_parser;
 mod assembler;
 mod simulator;
 mod disassembler;
+mod loader;
 
 use clap::{arg, Command, Arg, value_parser};
 use crate::disassembler::symbols::SymbolTable;
