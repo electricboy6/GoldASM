@@ -32,13 +32,13 @@ Note - There is a ``--help`` subcommand, run it if you need clarification.
 #### Assembling
 ``baseCommand assemble sourceFile``  
 
-Example: ``baseCommand assemble serialtest.gasm``
+Example: ``./GoldASM.linux64 assemble serialtest.gasm``
 
 
 #### Simulating
 ``baseCommand simulate binaryFile`` or ``baseCommand simulate binaryFile symbolTable``  
 
-Example: ``baseCommand simulate out.bin out.symbols``
+Example: ``./GoldASM.linux64 simulate out.bin out.symbols``
 
 
 ### What is the Gold ISA?
