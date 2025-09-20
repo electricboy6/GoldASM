@@ -30,10 +30,15 @@ Base command - ``.\GoldASM.exe`` on Windows or ``./GoldASM.linux64`` on linux
 Note - There is a ``--help`` subcommand, run it if you need clarification.
 
 #### Assembling
-``baseCommand assemble sourceFile``
+``baseCommand assemble sourceFile``  
+
+Example: ``baseCommand assemble serialtest.gasm``
+
 
 #### Simulating
-``baseCommand simulate binaryFile`` or ``baseCommand simulate binaryFile symbolTable``
+``baseCommand simulate binaryFile`` or ``baseCommand simulate binaryFile symbolTable``  
+
+Example: ``baseCommand simulate out.bin out.symbols``
 
 
 ### What is the Gold ISA?
