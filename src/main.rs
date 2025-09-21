@@ -31,6 +31,13 @@ fn main() {
                 .arg(Arg::new("sourceFile").required(true))
                 .arg(Arg::new("symbolTable").required(false))
         )
+        .subcommand(
+            Command::new("load")
+                .about("Load the given file onto the FPGA")
+                .propagate_version(true)
+                .arg_required_else_help(true)
+                .arg(Arg::new("file").required(true))
+        )
         .get_matches();
     match matches.subcommand() {
         Some(("assemble", sub_matches)) => {
@@ -76,6 +83,12 @@ fn main() {
                 println!("Simulating binary file {target_file}");
                 simulator::run(target_file.clone()).unwrap();
             }
+        }
+        Some(("load", sub_matches)) => {
+            let filename = sub_matches.get_one::<String>("file").unwrap();
+            //let file_bytes = std::fs::read(filename).unwrap_or_else(|_| panic!("File not found ({filename})!"));
+            //loader::send(&file_bytes);
+            loader::send(filename.as_bytes())
         }
         _ => unreachable!("Subcommand is required, clap should've already panicked."),
     }
